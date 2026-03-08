@@ -1,9 +1,11 @@
 // Vercel Serverless API wrapper for Express app
 let app;
+let importError;
 
 try {
   app = (await import('../backend/server.js')).default;
 } catch (err) {
+  importError = err;
   console.error('Failed to import server:', err);
 }
 
@@ -12,7 +14,8 @@ export default async function handler(req, res) {
   if (!app) {
     return res.status(500).json({ 
       error: 'Server initialization failed',
-      details: 'Could not load Express app. Check server logs.'
+      details: importError ? importError.message : 'Could not load Express app',
+      stack: importError ? importError.stack : null
     });
   }
   

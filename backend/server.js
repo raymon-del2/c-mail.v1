@@ -12,6 +12,11 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Check if MONGODB_URI is set
+if (!process.env.MONGODB_URI) {
+  console.error('❌ MONGODB_URI environment variable is not set!');
+}
+
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:5174', 'https://c-mail.vercel.app', 'https://*.vercel.app'],
   credentials: true
@@ -19,9 +24,29 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ Connected to MongoDB'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+// Lazy MongoDB connection - don't block startup
+let isConnecting = false;
+async function connectDB() {
+  if (mongoose.connection.readyState === 1) return; // Already connected
+  if (isConnecting) return; // Connection in progress
+  if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI not set');
+  
+  isConnecting = true;
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
+      socketTimeoutMS: 5000,
+      maxPoolSize: 1
+    });
+    console.log('✅ Connected to MongoDB');
+  } catch (err) {
+    console.error('❌ MongoDB connection error:', err);
+    throw err;
+  } finally {
+    isConnecting = false;
+  }
+}
 
 app.post('/api/signup', async (req, res) => {
   try {
@@ -63,6 +88,9 @@ app.post('/api/signup', async (req, res) => {
 
 app.post('/api/login', async (req, res) => {
   try {
+    // Lazy connect to MongoDB
+    await connectDB();
+    
     console.log('Login request body:', req.body);
     const { email, password } = req.body;
     
