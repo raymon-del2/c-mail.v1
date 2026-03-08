@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail } from 'lucide-react';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import './Signup.css';
 import './SignupMobile.css';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = '/api';
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -70,7 +69,7 @@ export default function Signup() {
       <div className="cmail-signup-card">
         <div className="cmail-signup-header">
           <div className="cmail-logo">
-            <Mail size={24} />
+            <img src="/cmail.svg" alt="C-mail" style={{ width: '32px', height: '32px' }} />
           </div>
           <h1 className="cmail-signup-title">
             {isLogin ? 'Sign In to C-mail' : 'Create your C-mail'}

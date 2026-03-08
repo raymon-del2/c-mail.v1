@@ -92,6 +92,12 @@ export default function Dashboard() {
   const [newsInput, setNewsInput] = useState({ title: '', content: '' });
   const [editingNewsId, setEditingNewsId] = useState(null);
   const [allNews, setAllNews] = useState([]); // For all users to see
+  const [showNewsModal, setShowNewsModal] = useState(false); // View all admin announcements
+  const [readNewsIds, setReadNewsIds] = useState(() => {
+    // Load read news from localStorage
+    const saved = localStorage.getItem('cmail_read_news');
+    return saved ? JSON.parse(saved) : [];
+  }); // Track which news items user has read
 
   // Phone number notification state
   const [showPhonePopup, setShowPhonePopup] = useState(false);
@@ -1310,9 +1316,9 @@ export default function Dashboard() {
           >
             <Inbox size={16} />
             <span>Inbox</span>
-            {(emails.filter(e => e.unread).length > 0 || emails.filter(e => e.replyCount > 0 && e.folder === 'inbox').length > 0) && (
+            {emails.filter(e => e.unread && e.folder === 'inbox').length > 0 && (
               <span className="cmail-badge">
-                {emails.filter(e => e.unread).length || emails.filter(e => e.replyCount > 0 && e.folder === 'inbox').length}
+                {emails.filter(e => e.unread && e.folder === 'inbox').length}
               </span>
             )}
           </button>
@@ -1361,15 +1367,6 @@ export default function Dashboard() {
               <Megaphone size={16} />
               <span>Admin News</span>
               <span className="cmail-badge cmail-badge-admin">ADMIN</span>
-            </button>
-          )}
-          {!isAdmin && (
-            <button 
-              className={`cmail-nav-item ${activeFolder === 'admin-news' ? 'active' : ''}`}
-              onClick={() => { setActiveFolder('admin-news'); setSelectedEmail(null); setIsComposing(false); setIsSidebarOpen(false); navigate(`/${username}/admin-news`); }}
-            >
-              <Megaphone size={16} />
-              <span>Admin News</span>
             </button>
           )}
         </nav>
@@ -1982,36 +1979,71 @@ curl -X POST https://c-mail.vercel.app/api/v1/send \\
             </div>
           </div>
           
-          {/* News Feed Banner for All Users */}
+          {/* News Feed Banner for All Users - Single Card with +N Badge */}
           {allNews.length > 0 && activeFolder === 'inbox' && (
-            <div className="cmail-news-feed" style={{ 
-              padding: '16px 20px', 
-              borderBottom: '1px solid var(--bg-border)',
-              background: 'linear-gradient(135deg, rgba(255, 85, 85, 0.1), rgba(255, 85, 85, 0.05))'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+            <div 
+              className="cmail-news-feed-card" 
+              onClick={() => {
+                // Mark all current news as read when opening
+                const allIds = allNews.map(n => n.id);
+                const newReadIds = [...new Set([...readNewsIds, ...allIds])];
+                setReadNewsIds(newReadIds);
+                localStorage.setItem('cmail_read_news', JSON.stringify(newReadIds));
+                setShowNewsModal(true);
+              }}
+              style={{ 
+                padding: '16px 20px', 
+                borderBottom: '1px solid var(--bg-border)',
+                background: 'linear-gradient(135deg, rgba(255, 85, 85, 0.15), rgba(255, 85, 85, 0.05))',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 85, 85, 0.25), rgba(255, 85, 85, 0.1))'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 85, 85, 0.15), rgba(255, 85, 85, 0.05))'}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
                 <Megaphone size={16} style={{ color: '#ff5555' }} />
                 <span style={{ fontSize: '12px', fontWeight: 600, color: '#ff5555', textTransform: 'uppercase' }}>
                   Admin Announcements
                 </span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {allNews.slice(0, 3).map((news) => (
-                  <div key={news.id} style={{ 
-                    padding: '12px', 
-                    background: 'var(--bg-surface)', 
-                    borderRadius: '8px',
-                    border: '1px solid var(--bg-border)'
-                  }}>
-                    <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: 600 }}>{news.title}</h4>
-                    <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                      {news.content}
-                    </p>
-                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px', display: 'block' }}>
-                      Posted {new Date(news.createdAt).toLocaleDateString()}
+                {/* Show +N badge only for unread news */}
+                {(() => {
+                  const unreadCount = allNews.filter(n => !readNewsIds.includes(n.id)).length;
+                  return unreadCount > 0 ? (
+                    <span 
+                      className="cmail-badge" 
+                      style={{ 
+                        background: '#ff5555', 
+                        color: '#fff',
+                        fontSize: '11px',
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        fontWeight: 600
+                      }}
+                    >
+                      +{unreadCount}
                     </span>
-                  </div>
-                ))}
+                  ) : null;
+                })()}
+              </div>
+              <div style={{ 
+                padding: '12px', 
+                background: 'var(--bg-surface)', 
+                borderRadius: '8px',
+                border: '1px solid var(--bg-border)'
+              }}>
+                <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: 600 }}>{allNews[0].title}</h4>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                  {allNews[0].content.substring(0, 80)}{allNews[0].content.length > 80 ? '...' : ''}
+                </p>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px', display: 'block' }}>
+                  Posted {new Date(allNews[0].createdAt).toLocaleDateString()}
+                </span>
+              </div>
+              <div style={{ textAlign: 'center', marginTop: '8px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  Click to view all {allNews.length} announcements
+                </span>
               </div>
             </div>
           )}
@@ -2050,6 +2082,10 @@ curl -X POST https://c-mail.vercel.app/api/v1/send \\
                     setSelectedEmail({...email, unread: false}); 
                     setIsSidebarOpen(false); 
                     navigate(`/${username}/${activeFolder}/${email.id}`); 
+                    // Load thread if email has replies
+                    if (email.replyCount > 0 || email.isReply) {
+                      fetchEmailThread(email.id);
+                    }
                   }}
                 >
                   <div className="cmail-email-item-main">
@@ -2065,7 +2101,7 @@ curl -X POST https://c-mail.vercel.app/api/v1/send \\
                         <span className="cmail-email-sender">
                           {email.unread && <span className="cmail-unread-dot"></span>}
                           <HighlightText text={email.sender} highlight={searchQuery} />
-                          {email.replyCount > 0 && selectedEmail?.threadId !== email.threadId && selectedEmail?.id !== email.id && (
+                          {email.unread && email.replyCount > 0 && selectedEmail?.threadId !== email.threadId && selectedEmail?.id !== email.id && (
                             <span className="cmail-reply-indicator">
                               <CornerDownRight size={10} />
                               {email.replyCount}
@@ -2494,18 +2530,115 @@ curl -X POST https://c-mail.vercel.app/api/v1/send \\
               </button>
               <button 
                 className="cmail-modal-btn confirm" 
-                onClick={() => {
+                onClick={async () => {
                   if (emailToDelete) {
-                    setEmails(emails.filter(e => e.id !== emailToDelete.id));
-                    setSelectedEmail(null);
-                    navigate(`/${username}/${activeFolder}`);
-                    setToast('Message deleted forever');
+                    try {
+                      // Delete from database
+                      const response = await fetch(`http://localhost:5000/api/emails/${emailToDelete.id}`, {
+                        method: 'DELETE'
+                      });
+                      
+                      if (response.ok) {
+                        // Remove from UI
+                        setEmails(emails.filter(e => e.id !== emailToDelete.id));
+                        setSelectedEmail(null);
+                        navigate(`/${username}/${activeFolder}`);
+                        setToast('Message deleted forever');
+                      } else {
+                        setToast('Failed to delete message');
+                      }
+                    } catch (error) {
+                      console.error('Delete error:', error);
+                      setToast('Failed to delete message');
+                    }
                     setTimeout(() => setToast(null), 3000);
                   }
                   setShowDeleteConfirm(false);
                 }}
               >
                 Delete Forever
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* News Modal - View All Announcements */}
+      {showNewsModal && (
+        <div className="cmail-modal-overlay" onClick={() => setShowNewsModal(false)}>
+          <div 
+            className="cmail-modal" 
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: '600px', maxHeight: '80vh', overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+              <Megaphone size={24} style={{ color: '#ff5555' }} />
+              <h2 style={{ margin: 0 }}>Admin Announcements</h2>
+              <span 
+                className="cmail-badge" 
+                style={{ 
+                  background: '#ff5555', 
+                  color: '#fff',
+                  fontSize: '12px',
+                  padding: '4px 10px',
+                  borderRadius: '12px',
+                  fontWeight: 600
+                }}
+              >
+                {allNews.length}
+              </span>
+            </div>
+            
+            <div style={{ 
+              maxHeight: '60vh', 
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              paddingRight: '8px'
+            }}>
+              {allNews.map((news, index) => (
+                <div 
+                  key={news.id} 
+                  style={{ 
+                    padding: '16px', 
+                    background: 'var(--bg-surface)', 
+                    borderRadius: '12px',
+                    border: '1px solid var(--bg-border)',
+                    borderLeft: '4px solid #ff5555'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <span 
+                      style={{ 
+                        fontSize: '11px', 
+                        fontWeight: 600,
+                        color: '#ff5555',
+                        background: 'rgba(255, 85, 85, 0.1)',
+                        padding: '2px 8px',
+                        borderRadius: '4px'
+                      }}
+                    >
+                      #{index + 1}
+                    </span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      {new Date(news.createdAt).toLocaleDateString()} at {new Date(news.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </span>
+                  </div>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: 600 }}>{news.title}</h4>
+                  <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                    {news.content}
+                  </p>
+                </div>
+              ))}
+            </div>
+            
+            <div className="cmail-modal-actions" style={{ marginTop: '20px' }}>
+              <button 
+                className="cmail-modal-btn confirm" 
+                onClick={() => setShowNewsModal(false)}
+              >
+                Close
               </button>
             </div>
           </div>

@@ -2,14 +2,18 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import './AuthAuthorize.css';
 
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = '';
 
 export default function AuthAuthorize() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser] = useState(() => {
+    // Initialize from localStorage to avoid setState in effect
+    const userData = localStorage.getItem('cmail_user');
+    return userData ? JSON.parse(userData) : null;
+  });
   const [clientInfo, setClientInfo] = useState(null);
   const [consentChecked, setConsentChecked] = useState(false);
 
@@ -57,40 +61,9 @@ export default function AuthAuthorize() {
     }
   }, [clientId, redirectUri, scope, state, currentUser, consentChecked]);
 
-  const checkConsentAndLoad = useCallback(async (userId) => {
-    try {
-      // Check if user has already consented
-      const consentRes = await fetch(`${API_BASE_URL}/api/auth/check-consent?userId=${userId}&clientId=${clientId}`);
-      const consentData = await consentRes.json();
-      
-      if (consentData.hasConsent) {
-        // Auto-approve and redirect
-        handleAllow(true);
-        return;
-      }
-
-      // Get API key info for display
-      const _apiKeyRes = await fetch(`${API_BASE_URL}/api/devapi/${userId}`);
-      const _apiKeyData = await _apiKeyRes.json();
-      
-      setClientInfo({
-        name: 'External App',
-        clientId: clientId,
-        redirectUri: redirectUri
-      });
-      
-      setConsentChecked(true);
-      setLoading(false);
-    } catch (err) {
-      console.error('Error checking consent:', err);
-      setError('Failed to load authorization information');
-      setLoading(false);
-    }
-  }, [clientId, redirectUri, handleAllow]);
-
   useEffect(() => {
     // Check if user is logged in (from localStorage)
-    const userData = localStorage.getItem('user');
+    const userData = localStorage.getItem('cmail_user');
     if (!userData) {
       // Redirect to login with return URL
       navigate(`/?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`);
@@ -98,18 +71,48 @@ export default function AuthAuthorize() {
     }
 
     const user = JSON.parse(userData);
-    setCurrentUser(user);
 
     // Validate required params
     if (!clientId || !redirectUri) {
-      setError('Missing required parameters: client_id and redirect_uri are required');
-      setLoading(false);
-      return;
+      // Use timeout to avoid synchronous setState in effect
+      const timer = setTimeout(() => {
+        setError('Missing required parameters: client_id and redirect_uri are required');
+        setLoading(false);
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
-    // Fetch client info and check consent
-    checkConsentAndLoad(user._id);
-  }, [clientId, redirectUri, navigate, checkConsentAndLoad]);
+    // Fetch client info and check consent - wrapped in async IIFE to avoid direct setState in effect
+    (async () => {
+      try {
+        // Check if user has already consented
+        const consentRes = await fetch(`${API_BASE_URL}/api/auth/check-consent?userId=${user._id}&clientId=${clientId}`);
+        const consentData = await consentRes.json();
+        
+        if (consentData.hasConsent) {
+          // Auto-approve and redirect
+          handleAllow(true);
+          return;
+        }
+
+        // Get API key info for display
+        await fetch(`${API_BASE_URL}/api/devapi/${user._id}`);
+        
+        setClientInfo({
+          name: 'External App',
+          clientId: clientId,
+          redirectUri: redirectUri
+        });
+        
+        setConsentChecked(true);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error checking consent:', err);
+        setError('Failed to load authorization information');
+        setLoading(false);
+      }
+    })();
+  }, [clientId, redirectUri, navigate, handleAllow]);
 
   const handleDeny = () => {
     // Redirect back with error

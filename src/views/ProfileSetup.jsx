@@ -4,7 +4,7 @@ import { Upload, Check, Loader2 } from 'lucide-react';
 import Button from '../components/Button';
 import './ProfileSetup.css';
 
-const API_URL = 'http://localhost:5000/api';
+const API_BASE_URL = '';
 
 export default function ProfileSetup() {
   const navigate = useNavigate();
@@ -47,7 +47,7 @@ export default function ProfileSetup() {
     setError('');
 
     try {
-      const response = await fetch(`${API_URL}/profile`, {
+      const response = await fetch('/api/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
