@@ -1,0 +1,81 @@
+.cmail-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.cmail-input-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.cmail-input-container {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background-color: var(--bg-surface-hover);
+  border: 1px solid var(--bg-border);
+  border-radius: var(--rounded-md);
+  transition: all var(--transition);
+  overflow: hidden;
+}
+
+.cmail-input-container:focus-within {
+  border-color: var(--accent-base);
+  box-shadow: 0 0 0 1px var(--accent-base);
+}
+
+.cmail-input-container.cmail-input-error {
+  border-color: var(--error-base);
+}
+.cmail-input-container.cmail-input-error:focus-within {
+  box-shadow: 0 0 0 1px var(--error-base);
+}
+
+.cmail-input-field {
+  flex: 1;
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: transparent;
+}
+
+.cmail-input-field::placeholder {
+  color: var(--text-tertiary);
+}
+
+.cmail-input-tail {
+  padding-right: 12px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  user-select: none;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .cmail-input-tail {
+    font-size: 12px;
+    padding-right: 8px;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .cmail-input-field {
+    min-width: 0;
+  }
+  
+  .cmail-input-container {
+    min-width: 0;
+  }
+}
+
+.cmail-input-error-msg {
+  font-size: 12px;
+  color: var(--error-base);
+  margin-top: 2px;
+}

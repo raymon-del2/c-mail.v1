@@ -1,0 +1,168 @@
+.cmail-setup-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  padding: 20px;
+}
+
+.cmail-setup-card {
+  background: var(--bg-card);
+  border: 1px solid var(--bg-border);
+  border-radius: 16px;
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.cmail-setup-header {
+  margin-bottom: 32px;
+}
+
+.cmail-setup-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #bd93f9 0%, #ff79c6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 32px;
+  font-weight: 600;
+  color: #282a36;
+  position: relative;
+  overflow: hidden;
+}
+
+.cmail-setup-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cmail-setup-avatar-edit {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.cmail-setup-avatar-edit:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.cmail-setup-avatar-edit svg {
+  color: white;
+}
+
+.cmail-setup-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.cmail-setup-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.cmail-setup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cmail-setup-actions {
+  margin-top: 24px;
+  display: flex;
+  gap: 12px;
+}
+
+.cmail-setup-btn {
+  flex: 1;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.cmail-setup-btn-primary {
+  background: #bd93f9;
+  color: #282a36;
+}
+
+.cmail-setup-btn-primary:hover {
+  background: #a77be0;
+}
+
+.cmail-setup-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cmail-setup-btn-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--bg-border);
+}
+
+.cmail-setup-btn-secondary:hover {
+  background: var(--bg-hover);
+}
+
+.cmail-setup-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.cmail-setup-success-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(80, 250, 123, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #50fa7b;
+}
+
+.cmail-setup-success h2 {
+  font-size: 24px;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.cmail-setup-success p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.cmail-setup-error {
+  color: #ff5555;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+#profile-upload {
+  display: none;
+}

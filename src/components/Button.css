@@ -1,0 +1,82 @@
+.cmail-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--rounded-md);
+  font-weight: 500;
+  transition: all var(--transition);
+  position: relative;
+  user-select: none;
+  overflow: hidden;
+}
+
+.cmail-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cmail-btn-sm {
+  padding: 0px 12px;
+  height: 28px;
+  font-size: 13px;
+}
+
+.cmail-btn-md {
+  padding: 0px 16px;
+  height: 36px;
+  font-size: 14px;
+}
+
+.cmail-btn-lg {
+  padding: 0px 24px;
+  height: 44px;
+  font-size: 15px;
+}
+
+/* Primary Variant */
+.cmail-btn-primary {
+  background-color: var(--text-primary);
+  color: var(--bg-base);
+  box-shadow: var(--shadow-sm);
+}
+.cmail-btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+.cmail-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Secondary Variant */
+.cmail-btn-secondary {
+  background-color: var(--bg-border);
+  color: var(--text-primary);
+  border: 1px solid var(--bg-border-focus);
+}
+.cmail-btn-secondary:hover:not(:disabled) {
+  background-color: var(--bg-border-focus);
+}
+
+/* Ghost Variant */
+.cmail-btn-ghost {
+  background-color: transparent;
+  color: var(--text-secondary);
+}
+.cmail-btn-ghost:hover:not(:disabled) {
+  background-color: var(--bg-border);
+  color: var(--text-primary);
+}
+
+.cmail-btn-loading .cmail-btn-content {
+  opacity: 0;
+}
+
+.cmail-btn-spinner {
+  position: absolute;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

@@ -1,0 +1,150 @@
+/* Mobile Overlay */
+.cmail-sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 40;
+}
+
+.cmail-mobile-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--rounded-md);
+  color: var(--text-secondary);
+  margin-right: 12px;
+}
+
+.cmail-mobile-menu-btn:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.cmail-list-top-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.cmail-list-top-row .cmail-folder-title {
+  margin-bottom: 0;
+}
+
+.cmail-detail-mobile-actions {
+  display: none;
+  margin-bottom: 16px;
+}
+
+.cmail-mobile-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.cmail-mobile-back-btn:hover {
+  color: var(--text-primary);
+}
+
+/* Responsive adjustments */
+.cmail-sidebar-mobile-close {
+  display: none;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.cmail-mobile-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--rounded-md);
+  color: var(--text-secondary);
+}
+
+.cmail-mobile-close-btn:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+@media (max-width: 900px) {
+  .cmail-list-pane {
+    width: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .cmail-sidebar-mobile-close {
+    display: flex;
+  }
+
+  .cmail-mobile-menu-btn {
+    display: flex;
+  }
+
+  .cmail-sidebar-overlay {
+    display: block;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition);
+  }
+
+  .cmail-sidebar-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .cmail-sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .cmail-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .cmail-list-pane {
+    flex-grow: 1;
+    width: 100%;
+    border-right: none;
+  }
+
+  .cmail-detail-pane {
+    display: none; /* Hidden by default on mobile until email is selected */
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+  }
+
+  .cmail-dashboard.show-detail .cmail-list-pane {
+    display: none;
+  }
+
+  .cmail-dashboard.show-detail .cmail-detail-pane {
+    display: flex;
+  }
+
+  .cmail-detail-mobile-actions {
+    display: flex;
+  }
+
+  .cmail-detail-header {
+    padding: 24px;
+  }
+
+  .cmail-detail-body {
+    padding: 24px;
+  }
+}

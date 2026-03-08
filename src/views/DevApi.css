@@ -1,0 +1,865 @@
+/* ========================================
+   Developer Console Styles (New Design)
+   ======================================== */
+
+.cmail-devapi-pane {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--bg-base);
+}
+
+.cmail-devapi-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+/* --- Header --- */
+.cmail-devapi-header-new {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--bg-border);
+}
+
+.cmail-devapi-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.cmail-devapi-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cmail-devapi-header-new h1 {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.cmail-devapi-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(98, 114, 164, 0.15);
+  color: #8be9fd;
+  border: 1px solid rgba(139, 233, 253, 0.25);
+}
+
+.cmail-devapi-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.cmail-devapi-btn-outline {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--rounded-md);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cmail-devapi-btn-outline:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* --- Grid Layout --- */
+.cmail-devapi-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .cmail-devapi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Cards --- */
+.cmail-devapi-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--bg-border);
+  border-radius: var(--rounded-lg);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.cmail-devapi-card-dashed {
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.cmail-devapi-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--bg-border);
+}
+
+.cmail-devapi-card-header h2 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cmail-devapi-card-icon {
+  color: #bd93f9;
+}
+
+.cmail-devapi-card-header-sm {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--bg-border);
+}
+
+.cmail-devapi-card-header-sm h2 {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.cmail-devapi-card-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 0 24px;
+  margin-top: -8px;
+  margin-bottom: 16px;
+}
+
+.cmail-devapi-card-body {
+  padding: 20px 24px;
+}
+
+/* --- Warning Box --- */
+.cmail-devapi-warning-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(255, 184, 108, 0.08);
+  border: 1px solid rgba(255, 184, 108, 0.25);
+  border-radius: var(--rounded-md);
+  font-size: 13px;
+  color: #ffb86c;
+  margin-bottom: 20px;
+}
+
+.cmail-devapi-warning-box svg {
+  flex-shrink: 0;
+}
+
+/* --- API Key Section --- */
+.cmail-devapi-key-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cmail-devapi-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.cmail-devapi-key-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.cmail-devapi-key-input-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.cmail-devapi-key-input {
+  width: 100%;
+  padding: 12px 44px 12px 16px;
+  font-family: 'Fira Mono', 'Consolas', monospace;
+  font-size: 13px;
+  background: #0a0b0d;
+  border: 1px solid var(--bg-border);
+  border-radius: var(--rounded-md);
+  color: #50fa7b;
+  letter-spacing: 0.03em;
+}
+
+.cmail-devapi-key-input.placeholder {
+  color: var(--text-muted);
+}
+
+.cmail-devapi-key-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.cmail-devapi-key-toggle:hover {
+  color: var(--text-secondary);
+}
+
+.cmail-devapi-key-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.cmail-devapi-btn-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--rounded-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cmail-devapi-btn-icon:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.cmail-devapi-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  background: #6272a4;
+  border: 1px solid #6272a4;
+  border-radius: var(--rounded-md);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.cmail-devapi-btn-primary:hover {
+  background: #7284b6;
+  border-color: #7284b6;
+}
+
+.cmail-devapi-btn-danger {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 85, 85, 0.1);
+  border: 1px solid rgba(255, 85, 85, 0.3);
+  border-radius: var(--rounded-md);
+  color: #ff5555;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cmail-devapi-btn-danger:hover {
+  background: rgba(255, 85, 85, 0.2);
+}
+
+/* --- API Key Hint --- */
+.cmail-devapi-key-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+/* --- URL Verification Card --- */
+.cmail-devapi-url-verification-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: #0a0b0d;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--rounded-md);
+  position: relative;
+}
+
+.cmail-devapi-url-verification-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cmail-devapi-verification-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.cmail-devapi-verification-badge.unverified {
+  color: #ffb86c;
+  border: 1px solid rgba(255, 184, 108, 0.3);
+  background: rgba(255, 184, 108, 0.08);
+}
+
+.cmail-devapi-verification-badge.verified {
+  color: #50fa7b;
+  border: 1px solid rgba(80, 250, 123, 0.3);
+  background: rgba(80, 250, 123, 0.08);
+}
+
+.cmail-devapi-verification-instructions {
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cmail-devapi-verification-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.cmail-devapi-file-path {
+  color: var(--text-primary);
+  font-family: 'Fira Mono', monospace;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.cmail-devapi-verification-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.cmail-devapi-verification-token {
+  flex: 1;
+  font-family: 'Fira Mono', monospace;
+  font-size: 11px;
+  color: #50fa7b;
+  background: #111318;
+  padding: 8px 12px;
+  border-radius: var(--rounded-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cmail-devapi-btn-check {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #6272a4;
+  border: 1px solid #6272a4;
+  border-radius: var(--rounded-sm);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.cmail-devapi-btn-check:hover {
+  background: #7284b6;
+  border-color: #7284b6;
+}
+
+.cmail-devapi-url-remove-float {
+  position: absolute;
+  top: 44px;
+  right: 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.cmail-devapi-url-verification-card:hover .cmail-devapi-url-remove-float {
+  opacity: 1;
+}
+
+.cmail-devapi-url-remove-float:hover {
+  color: #ff5555;
+}
+
+/* --- Syntax Highlighting --- */
+.cmail-code-keyword {
+  color: #ff79c6;
+}
+
+.cmail-code-function {
+  color: #50fa7b;
+}
+
+.cmail-code-string {
+  color: #f1fa8c;
+}
+
+.cmail-code-comment {
+  color: #6272a4;
+}
+
+.cmail-code-placeholder {
+  color: #bd93f9;
+  font-style: italic;
+}
+
+/* --- Redirect URLs --- */
+.cmail-devapi-urls-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.cmail-devapi-url-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #0a0b0d;
+  border: 1px solid var(--bg-border);
+  border-radius: var(--rounded-md);
+}
+
+.cmail-devapi-url-code {
+  font-family: 'Fira Mono', monospace;
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cmail-devapi-url-remove {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color 0.15s ease;
+}
+
+.cmail-devapi-url-remove:hover {
+  color: #ff5555;
+}
+
+.cmail-devapi-url-add-row {
+  display: flex;
+  gap: 10px;
+}
+
+.cmail-devapi-url-input {
+  flex: 1;
+  padding: 10px 14px;
+  font-size: 13px;
+  background: #0a0b0d;
+  border: 1px solid var(--bg-border);
+  border-radius: var(--rounded-md);
+  color: var(--text-primary);
+  font-family: 'Fira Mono', monospace;
+}
+
+.cmail-devapi-url-input:focus {
+  outline: none;
+  border-color: #6272a4;
+  box-shadow: 0 0 0 3px rgba(98, 114, 164, 0.18);
+}
+
+.cmail-devapi-url-input::placeholder {
+  color: #444;
+}
+
+/* --- Quick Integration --- */
+.cmail-devapi-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--rounded-md);
+  margin-bottom: 16px;
+}
+
+.cmail-devapi-tab {
+  padding: 8px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: transparent;
+  border: none;
+  border-radius: var(--rounded-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cmail-devapi-tab:hover {
+  color: var(--text-secondary);
+}
+
+.cmail-devapi-tab.active {
+  background: rgba(98, 114, 164, 0.2);
+  color: var(--text-primary);
+}
+
+.cmail-devapi-code-block {
+  background: #0a0b0d;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--rounded-md);
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.cmail-devapi-code {
+  padding: 16px;
+  margin: 0;
+  font-family: 'Fira Mono', 'Consolas', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.cmail-devapi-status-list {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cmail-devapi-status-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.cmail-devapi-status-icon {
+  color: #50fa7b;
+}
+
+/* --- Scrollbar --- */
+.cmail-devapi-pane::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cmail-devapi-pane::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cmail-devapi-pane::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+
+/* --- Cross-Platform Optimizations --- */
+/* iOS Safari specific */
+@supports (-webkit-touch-callout: none) {
+  .cmail-devapi-key-input,
+  .cmail-devapi-url-input,
+  .cmail-devapi-code {
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 0;
+  }
+  
+  .cmail-devapi-code-block {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .cmail-devapi-btn-icon:hover,
+  .cmail-devapi-btn-danger:hover,
+  .cmail-devapi-btn-primary:hover,
+  .cmail-devapi-btn-outline:hover,
+  .cmail-devapi-btn-check:hover {
+    transform: none;
+    background: inherit;
+    border-color: inherit;
+  }
+  
+  .cmail-devapi-btn-icon:active,
+  .cmail-devapi-btn-danger:active,
+  .cmail-devapi-btn-primary:active,
+  .cmail-devapi-btn-outline:active,
+  .cmail-devapi-btn-check:active {
+    transform: scale(0.95);
+  }
+  
+  .cmail-devapi-tab:hover {
+    color: var(--text-muted);
+    background: transparent;
+  }
+  
+  .cmail-devapi-tab:active {
+    color: var(--text-primary);
+    background: rgba(98, 114, 164, 0.2);
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .cmail-devapi-code {
+    font-size: 13px;
+  }
+  
+  .cmail-devapi-key-input,
+  .cmail-devapi-url-input {
+    font-size: 14px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .cmail-devapi-btn-icon,
+  .cmail-devapi-btn-danger,
+  .cmail-devapi-btn-primary,
+  .cmail-devapi-btn-outline,
+  .cmail-devapi-btn-check,
+  .cmail-devapi-tab {
+    transition: none;
+  }
+}
+
+/* --- Mobile --- */
+@media (max-width: 768px) {
+  .cmail-devapi-container {
+    padding: 16px 12px;
+  }
+
+  .cmail-devapi-header-new {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+  }
+
+  .cmail-devapi-header-new h1 {
+    font-size: 20px;
+  }
+
+  .cmail-devapi-subtitle {
+    font-size: 13px;
+  }
+
+  .cmail-devapi-btn-outline {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+
+  .cmail-devapi-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .cmail-devapi-card {
+    margin-bottom: 16px;
+  }
+
+  .cmail-devapi-card-header {
+    padding: 16px 20px;
+  }
+
+  .cmail-devapi-card-body {
+    padding: 16px 20px;
+  }
+
+  .cmail-devapi-key-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .cmail-devapi-key-input {
+    padding: 14px 48px 14px 16px;
+    font-size: 14px;
+  }
+
+  .cmail-devapi-key-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .cmail-devapi-btn-icon,
+  .cmail-devapi-btn-danger {
+    width: 100%;
+    height: 44px;
+  }
+
+  .cmail-devapi-btn-primary {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+
+  .cmail-devapi-tabs {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .cmail-devapi-tab {
+    padding: 10px 8px;
+    font-size: 10px;
+  }
+
+  .cmail-devapi-code {
+    padding: 8px;
+    font-size: 8px;
+    line-height: 1.3;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-wrap: break-word;
+  }
+
+  .cmail-devapi-status-list {
+    margin-top: 16px;
+    gap: 10px;
+  }
+
+  .cmail-devapi-status-item {
+    font-size: 11px;
+  }
+
+  .cmail-devapi-url-add-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .cmail-devapi-url-input {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+
+  .cmail-devapi-url-item {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 16px;
+  }
+
+  .cmail-devapi-url-code {
+    width: 100%;
+    font-size: 13px;
+  }
+
+  .cmail-devapi-url-remove {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .cmail-devapi-warning-box {
+    padding: 16px;
+    font-size: 14px;
+  }
+
+  .cmail-devapi-verification-token {
+    font-size: 10px;
+    padding: 10px 12px;
+  }
+
+  .cmail-devapi-btn-check {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cmail-devapi-container {
+    padding: 12px 8px;
+  }
+
+  .cmail-devapi-header-new h1 {
+    font-size: 18px;
+  }
+
+  .cmail-devapi-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  .cmail-devapi-card-header {
+    padding: 12px 16px;
+  }
+
+  .cmail-devapi-card-body {
+    padding: 12px 16px;
+  }
+
+  .cmail-devapi-tabs {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .cmail-devapi-tab {
+    padding: 12px;
+    font-size: 12px;
+  }
+
+  .cmail-devapi-code {
+    padding: 10px;
+    font-size: 9px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-wrap: break-word;
+  }
+
+  .cmail-devapi-key-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .cmail-devapi-btn-icon,
+  .cmail-devapi-btn-danger,
+  .cmail-devapi-btn-primary {
+    width: 100%;
+  }
+}

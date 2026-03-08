@@ -1,0 +1,117 @@
+.cmail-signup-page {
+  background: radial-gradient(circle at 50% -20%, #1a1e2b 0%, var(--bg-base) 60%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  width: 100vw;
+  padding: 24px;
+}
+
+.cmail-signup-card {
+  width: 100%;
+  max-width: 440px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--bg-border);
+  border-radius: var(--rounded-lg);
+  padding: 40px;
+  box-shadow: var(--shadow-md), 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+  animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.cmail-signup-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.cmail-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--bg-border-focus), var(--bg-surface));
+  border: 1px solid var(--bg-border);
+  border-radius: var(--rounded-lg);
+  margin-bottom: 24px;
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.cmail-signup-title {
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+
+.cmail-signup-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.cmail-signup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cmail-form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.cmail-signup-actions {
+  margin-top: 16px;
+}
+
+.cmail-signup-btn {
+  width: 100%;
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cmail-signup-toggle {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.cmail-toggle-btn {
+  color: var(--text-primary);
+  font-weight: 500;
+  transition: color var(--transition);
+  padding: 0 4px;
+}
+
+.cmail-toggle-btn:hover {
+  color: var(--accent-hover);
+}
+
+/* Developer link - public access to API docs */
+.cmail-signup-dev-link {
+  text-align: center;
+  margin-top: 16px;
+}
+
+.cmail-dev-link {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+
+.cmail-dev-link:hover {
+  color: var(--accent-hover);
+}
