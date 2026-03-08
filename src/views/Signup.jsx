@@ -37,7 +37,19 @@ export default function Signup() {
         body: JSON.stringify(payload)
       });
       
-      const data = await response.json();
+      // Check if response is empty before parsing JSON
+      const text = await response.text();
+      if (!text) {
+        throw new Error('Server returned empty response');
+      }
+      
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError, 'Response text:', text);
+        throw new Error('Invalid server response');
+      }
       
       if (!response.ok) {
         throw new Error(data.error || 'Something went wrong');

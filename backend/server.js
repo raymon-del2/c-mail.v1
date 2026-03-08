@@ -63,14 +63,22 @@ app.post('/api/signup', async (req, res) => {
 
 app.post('/api/login', async (req, res) => {
   try {
+    console.log('Login request body:', req.body);
     const { email, password } = req.body;
     
+    if (!email || !password) {
+      console.log('Missing email or password');
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+    
     const user = await User.findOne({ email });
+    console.log('User found:', !!user);
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
     const isMatch = await user.comparePassword(password);
+    console.log('Password match:', isMatch);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -78,6 +86,7 @@ app.post('/api/login', async (req, res) => {
     const userResponse = user.toObject();
     delete userResponse.password;
     
+    console.log('Login successful for:', email);
     res.json({ 
       message: 'Login successful', 
       user: userResponse 
@@ -493,6 +502,35 @@ app.get('/api/emails/thread/:emailId', async (req, res) => {
   } catch (error) {
     console.error('Fetch thread error:', error);
     res.status(500).json({ error: 'Failed to fetch thread' });
+  }
+});
+
+// ========== MONGODB HEALTH CHECK CRON ENDPOINT ==========
+
+// Simple ping endpoint to keep MongoDB connection alive
+// Call this weekly via Vercel Cron Jobs to prevent freezing after 6 months
+app.get('/api/health/ping', async (req, res) => {
+  try {
+    // Perform a simple database operation to keep connection active
+    const userCount = await User.countDocuments();
+    const emailCount = await Email.countDocuments();
+    
+    res.json({ 
+      success: true, 
+      message: 'MongoDB connection is alive',
+      timestamp: new Date().toISOString(),
+      stats: {
+        users: userCount,
+        emails: emailCount
+      }
+    });
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Database connection issue',
+      timestamp: new Date().toISOString()
+    });
   }
 });
 

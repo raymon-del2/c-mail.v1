@@ -1,0 +1,16 @@
+name: MongoDB Keep Alive
+
+on:
+  schedule:
+    # Run every Sunday at 00:00 UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Health Endpoint
+        run: |
+          curl -s "https://c-mail.vercel.app/api/health/ping" | echo
+          echo "Health check completed at $(date)"
