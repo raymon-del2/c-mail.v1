@@ -111,6 +111,71 @@ Content-Type: application/json
   <div class="endpoint"><span class="method">POST</span> <code>/api/v1/verify</code> - Exchange OAuth code for token</div>
   <div class="endpoint"><span class="method">GET</span> <code>/api/devapi/email-logs/:userId</code> - Get email logs</div>
 
+  <h2>Webhooks</h2>
+  <p>Webhooks allow your application to receive real-time notifications when events occur.</p>
+
+  <h3>Authentication Events</h3>
+  <table>
+    <tr><th>Event</th><th>Description</th></tr>
+    <tr><td><code>user.created</code></td><td>New user registered - sync profile to your database</td></tr>
+    <tr><td><code>user.updated</code></td><td>User profile changed (email, username, picture)</td></tr>
+    <tr><td><code>user.deleted</code></td><td>Account deleted - purge user data for GDPR compliance</td></tr>
+    <tr><td><code>session.revoked</code></td><td>User logged out of all devices or account suspended</td></tr>
+  </table>
+
+  <h3>Email Events</h3>
+  <table>
+    <tr><th>Event</th><th>Description</th></tr>
+    <tr><td><code>mail.received</code></td><td>New email received with sender, subject, and snippet</td></tr>
+    <tr><td><code>mail.failed</code></td><td>Email delivery failed (bounce)</td></tr>
+    <tr><td><code>mail.opened</code></td><td>Recipient opened an email sent via API (tracking enabled)</td></tr>
+  </table>
+
+  <h3>Webhook Payload</h3>
+  <pre><code>{
+  "event": "mail.received",
+  "created_at": "2026-03-08T21:00:00Z",
+  "data": {
+    "id": "msg_12345",
+    "from": "sender@example.com",
+    "subject": "Project Update",
+    "snippet": "Here is the latest progress...",
+    "link": "https://c-mail.vercel.app/mail/msg_12345"
+  }
+}</code></pre>
+
+  <h3>Security - Signature Verification</h3>
+  <p>Verify webhooks using HMAC-SHA256 with your webhook secret:</p>
+  <pre><code>// Node.js example
+const crypto = require('crypto');
+
+function verifyWebhook(payload, signature, secret) {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expected)
+  );
+}
+
+// Check X-Cmail-Signature header
+const signature = req.headers['x-cmail-signature'];
+if (!verifyWebhook(req.body, signature, WEBHOOK_SECRET)) {
+  return res.status(401).send('Invalid signature');
+}</code></pre>
+
+  <h3>Retry Logic</h3>
+  <p>If your server doesn't return 200 OK, C-mail retries with exponential backoff:</p>
+  <ul>
+    <li>Retry 1: 1 second delay</li>
+    <li>Retry 2: 5 second delay</li>
+    <li>Retry 3: 25 second delay</li>
+  </ul>
+  <p>After 3 failures, the webhook is marked as failed.</p>
+
   <h2>Error Codes</h2>
   <table>
     <tr><th>Code</th><th>Description</th></tr>

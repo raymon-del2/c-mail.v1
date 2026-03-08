@@ -736,6 +736,100 @@ const apiKey = 'c-mail_xxxxxxxxxxxxxxxx'; // From /devapi
                 </div>
               </div>
 
+              <div id="webhooks" className="apidocs-subsection">
+                <h2 className="apidocs-heading">Webhooks</h2>
+                <p className="apidocs-text">
+                  Webhooks allow your application to receive real-time notifications when events occur.
+                  Configure webhook endpoints in your Developer Console to receive POST requests when users
+                  authenticate, emails arrive, or other events happen.
+                </p>
+
+                <h3 className="apidocs-subheading">Authentication Events</h3>
+                <div className="apidocs-table-wrapper">
+                  <table className="apidocs-table">
+                    <thead>
+                      <tr><th>Event</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td><code>user.created</code></td><td>New user registered - sync profile to your database</td></tr>
+                      <tr><td><code>user.updated</code></td><td>User profile changed (email, username, picture)</td></tr>
+                      <tr><td><code>user.deleted</code></td><td>Account deleted - purge user data for GDPR compliance</td></tr>
+                      <tr><td><code>session.revoked</code></td><td>User logged out of all devices or account suspended</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <h3 className="apidocs-subheading">Email Events</h3>
+                <div className="apidocs-table-wrapper">
+                  <table className="apidocs-table">
+                    <thead>
+                      <tr><th>Event</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td><code>mail.received</code></td><td>New email received with sender, subject, and snippet</td></tr>
+                      <tr><td><code>mail.failed</code></td><td>Email delivery failed (bounce)</td></tr>
+                      <tr><td><code>mail.opened</code></td><td>Recipient opened an email sent via API (tracking enabled)</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <h3 className="apidocs-subheading">Webhook Payload</h3>
+                <CodeBlock 
+                  code={`{
+  "event": "mail.received",
+  "created_at": "2026-03-08T21:00:00Z",
+  "data": {
+    "id": "msg_12345",
+    "from": "sender@example.com",
+    "subject": "Project Update",
+    "snippet": "Here is the latest progress on the deployment...",
+    "link": "https://c-mail.vercel.app/mail/msg_12345"
+  }
+}`}
+                  language="json"
+                  title="Example Payload"
+                />
+
+                <h3 className="apidocs-subheading">Security - Signature Verification</h3>
+                <p className="apidocs-text">
+                  All webhooks include a signature header to verify they came from C-mail. 
+                  Verify using HMAC-SHA256 with your webhook secret:
+                </p>
+                <CodeBlock 
+                  code={`// Node.js example
+const crypto = require('crypto');
+
+function verifyWebhook(payload, signature, secret) {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expected)
+  );
+}
+
+// Verify the X-Cmail-Signature header
+const signature = req.headers['x-cmail-signature'];
+if (!verifyWebhook(req.body, signature, WEBHOOK_SECRET)) {
+  return res.status(401).send('Invalid signature');
+}`}
+                  language="javascript"
+                  title="Signature Verification"
+                />
+
+                <h3 className="apidocs-subheading">Retry Logic</h3>
+                <p className="apidocs-text">
+                  If your server doesn't return a 200 OK, C-mail will retry with exponential backoff:
+                  <br/>• Retry 1: 1 second delay
+                  <br/>• Retry 2: 5 second delay  
+                  <br/>• Retry 3: 25 second delay
+                  <br/>After 3 failures, the webhook is marked as failed.
+                </p>
+              </div>
+
               <div id="errors" className="apidocs-subsection">
                 <h2 className="apidocs-heading">Error Codes</h2>
                 
