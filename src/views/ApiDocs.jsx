@@ -449,6 +449,14 @@ curl -X POST https://c-mail.vercel.app/api/v1/send \\
 
         <div className="apidocs-header-right">
           <a 
+            href="/api/docs" 
+            className="apidocs-header-link"
+            style={{ background: '#dbeafe', color: '#1d4ed8', padding: '4px 12px', borderRadius: '6px', fontSize: '12px' }}
+          >
+            <ExternalLink size={14} />
+            AI Docs
+          </a>
+          <a 
             href="https://github.com/Raymon-del2/c-mail.v1.git" 
             target="_blank" 
             rel="noopener noreferrer"
@@ -459,6 +467,21 @@ curl -X POST https://c-mail.vercel.app/api/v1/send \\
           </a>
         </div>
       </header>
+
+      {/* AI Notice Banner */}
+      <div style={{ 
+        background: '#fef3c7', 
+        border: '1px solid #f59e0b', 
+        padding: '12px 20px', 
+        textAlign: 'center',
+        fontSize: '14px',
+        color: '#92400e'
+      }}>
+        <strong>👋 Hey humans!</strong> This is the interactive docs. 
+        <a href="/api/docs" style={{ color: '#b45309', textDecoration: 'underline', marginLeft: '8px' }}>
+          AI/bots can view the static version here →
+        </a>
+      </div>
 
       {/* Main Layout */}
       <div className="apidocs-layout">
