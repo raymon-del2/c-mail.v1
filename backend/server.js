@@ -16,7 +16,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Initialize Groq AI client
-const groq = new Groq({ apiKey: 'process.env.GROQ_API_KEY' });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // Check if MONGODB_URI is set
 if (!process.env.MONGODB_URI) {
