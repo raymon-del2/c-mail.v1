@@ -6,12 +6,14 @@ import Settings from './views/Settings';
 import AuthAuthorize from './views/AuthAuthorize';
 import ApiDocs from './views/ApiDocs';
 import Verify from './views/Verify';
+import SplashScreen from './views/SplashScreen';
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Signup />} />
+        <Route path="/" element={<SplashScreen />} />
+        <Route path="/login" element={<Signup />} />
         <Route path="/api-docs" element={<ApiDocs />} />
         <Route path="/setup-profile" element={<ProfileSetup />} />
         <Route path="/auth/authorize" element={<AuthAuthorize />} />

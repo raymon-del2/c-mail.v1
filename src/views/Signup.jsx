@@ -55,7 +55,37 @@ export default function Signup() {
         throw new Error(data.error || 'Something went wrong');
       }
       
-      localStorage.setItem('cmail_user', JSON.stringify(data.user));
+      // Generate a simple token for the user
+      const token = 'cmail_token_' + Math.random().toString(36).substring(2);
+      
+      // Store in multi-account format
+      const existingData = localStorage.getItem('cmail_accounts');
+      let accountsData = existingData ? JSON.parse(existingData) : { activeAccount: null, accounts: [] };
+      
+      // Check if account already exists
+      const existingIndex = accountsData.accounts.findIndex(acc => acc.email === data.user.email);
+      const accountInfo = {
+        email: data.user.email,
+        username: data.user.username,
+        name: `${data.user.firstName} ${data.user.secondName}`,
+        token: token,
+        profileUrl: data.user.profileUrl
+      };
+      
+      if (existingIndex >= 0) {
+        // Update existing account
+        accountsData.accounts[existingIndex] = accountInfo;
+      } else {
+        // Add new account
+        accountsData.accounts.push(accountInfo);
+      }
+      
+      // Set as active account
+      accountsData.activeAccount = data.user.email;
+      
+      // Save to localStorage
+      localStorage.setItem('cmail_accounts', JSON.stringify(accountsData));
+      localStorage.setItem('cmail_user', JSON.stringify(data.user)); // Keep for backward compatibility
       
       if (!isLogin) {
         navigate('/setup-profile');

@@ -36,6 +36,77 @@ export default function Dashboard() {
     return savedUser ? JSON.parse(savedUser) : null;
   });
   
+  // Account switcher state with loading
+  const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
+  const [accountLoading, setAccountLoading] = useState(false);
+  const [otherAccounts, setOtherAccounts] = useState([]);
+  
+  const accounts = (() => {
+    const stored = localStorage.getItem('cmail_accounts');
+    return stored ? JSON.parse(stored).accounts : [];
+  })();
+  
+  // Toggle account switcher with loading effect
+  const toggleAccountSwitcher = () => {
+    if (!showAccountSwitcher) {
+      setAccountLoading(true);
+      // Premium loading delay effect
+      setTimeout(() => {
+        const stored = localStorage.getItem('cmail_accounts');
+        if (stored) {
+          const data = JSON.parse(stored);
+          // Filter out active account for cleaner UI
+          const filtered = data.accounts?.filter(acc => acc.email !== user.email) || [];
+          setOtherAccounts(filtered);
+        }
+        setAccountLoading(false);
+      }, 400);
+    }
+    setShowAccountSwitcher(!showAccountSwitcher);
+  };
+  
+  // Switch account function
+  const switchAccount = (accountEmail) => {
+    const stored = localStorage.getItem('cmail_accounts');
+    if (!stored) return;
+    
+    const data = JSON.parse(stored);
+    const account = data.accounts.find(acc => acc.email === accountEmail);
+    
+    if (account) {
+      // Update active account
+      data.activeAccount = accountEmail;
+      localStorage.setItem('cmail_accounts', JSON.stringify(data));
+      
+      // Update current user
+      const userData = {
+        email: account.email,
+        username: account.username,
+        firstName: account.name?.split(' ')[0] || '',
+        secondName: account.name?.split(' ')[1] || '',
+        profileUrl: account.profileUrl
+      };
+      localStorage.setItem('cmail_user', JSON.stringify(userData));
+      
+      // Navigate to new account's inbox
+      window.location.href = `/${account.username}/inbox`;
+    }
+    
+    setShowAccountSwitcher(false);
+  };
+  
+  // Add new account
+  const addNewAccount = () => {
+    navigate('/login');
+  };
+  
+  // Sign out all accounts
+  const signOutAll = () => {
+    localStorage.removeItem('cmail_accounts');
+    localStorage.removeItem('cmail_user');
+    navigate('/login');
+  };
+  
   // Scroll to top on initial load
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -612,7 +683,7 @@ export default function Dashboard() {
       } else {
         setToast(data.error || 'Verification failed');
       }
-      setTimeout(() => setToast(null), 4000);
+      await new Promise(resolve => setTimeout(resolve, 300));
     } catch (error) {
       console.error('Verify domain error:', error);
       setToast('Failed to verify domain');
@@ -1923,7 +1994,7 @@ export default function Dashboard() {
 
       <aside className={`cmail-sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="cmail-sidebar-header">
-          <div className="cmail-user-profile">
+          <div className="cmail-user-profile" onClick={toggleAccountSwitcher}>
             <div className="cmail-avatar">
               {user.profileUrl ? (
                 <img src={user.profileUrl} alt="Profile" />
@@ -1935,7 +2006,61 @@ export default function Dashboard() {
               <span className="cmail-user-name">{user.firstName} {user.secondName}</span>
               <span className="cmail-user-handle">{user.email}</span>
             </div>
+            {accounts.length > 1 && (
+              <ChevronDown size={16} className={`cmail-account-chevron ${showAccountSwitcher ? 'open' : ''}`} />
+            )}
           </div>
+          
+          {/* Account Switcher Dropdown - Linear Style */}
+          {showAccountSwitcher && (
+            <div className="cmail-account-dropdown">
+              <div className="cmail-account-list">
+                {accountLoading ? (
+                  // Shimmer loading effect
+                  <div className="cmail-account-shimmer">
+                    <div className="cmail-shimmer-row" />
+                    <div className="cmail-shimmer-row" />
+                  </div>
+                ) : otherAccounts.length > 0 ? (
+                  otherAccounts.map((account) => (
+                    <div
+                      key={account.email}
+                      className="cmail-account-item"
+                      onClick={() => switchAccount(account.email)}
+                    >
+                      <div className="cmail-account-avatar">
+                        {account.profileUrl ? (
+                          <img src={account.profileUrl} alt={account.name} />
+                        ) : (
+                          <span>{account.name?.[0] || account.email[0]}</span>
+                        )}
+                      </div>
+                      <div className="cmail-account-details">
+                        <span className="cmail-account-name">{account.name || account.username}</span>
+                        <span className="cmail-account-email">{account.email}</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="cmail-account-empty">No other accounts</div>
+                )}
+              </div>
+              
+              <div className="cmail-account-divider" />
+              
+              <div className="cmail-account-actions">
+                <button className="cmail-account-action-btn add" onClick={addNewAccount}>
+                  <Plus size={14} />
+                  <span>Add another account</span>
+                </button>
+                <button className="cmail-account-action-btn sign-out" onClick={signOutAll}>
+                  <LogOut size={14} />
+                  <span>Sign out all accounts</span>
+                </button>
+              </div>
+            </div>
+          )}
+          
           <button className="cmail-sidebar-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)} title="Toggle sidebar">
             <Menu size={20} />
           </button>
