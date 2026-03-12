@@ -5,7 +5,7 @@ import Button from '../components/Button';
 import './Signup.css';
 import './SignupMobile.css';
 
-const API_URL = 'http://localhost:5000/api';
+import { API_BASE } from '../config/api';
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -31,7 +31,7 @@ export default function Signup() {
         ? { email: `${formData.username}@c-mail.vercel.app`, password: formData.password }
         : { ...formData, email: `${formData.username}@c-mail.vercel.app` };
       
-      const response = await fetch(`${API_URL}${endpoint}`, {
+      const response = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

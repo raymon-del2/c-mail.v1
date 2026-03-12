@@ -4,6 +4,7 @@ import { ArrowLeft, Camera, Lock, ShieldCheck, MapPin, Globe, Check } from 'luci
 import Input from '../components/Input';
 import Button from '../components/Button';
 import './Settings.css';
+import { API_URL } from '../config/api';
 
 const LOCATIONS = [
   "New York, USA",
@@ -148,7 +149,7 @@ export default function Settings() {
     
     try {
       // Save to database
-      const response = await fetch('http://localhost:5000/api/user/profile', {
+      const response = await fetch(`${API_URL}/api/user/profile`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

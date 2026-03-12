@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Upload, Check, Loader2 } from 'lucide-react';
 import Button from '../components/Button';
 import './ProfileSetup.css';
-
-const API_BASE_URL = 'http://localhost:5000';
+import { API_URL } from '../config/api';
 
 export default function ProfileSetup() {
   const navigate = useNavigate();
@@ -47,7 +46,7 @@ export default function ProfileSetup() {
     setError('');
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/profile`, {
+      const response = await fetch(`${API_URL}/api/user/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

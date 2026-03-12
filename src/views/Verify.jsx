@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import './Verify.css';
+import { API_URL } from '../config/api';
 
 export default function Verify() {
   const [searchParams] = useSearchParams();
@@ -26,7 +27,7 @@ export default function Verify() {
     // Verify the magic link
     const verifyLink = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/dev/auth/verify-link', {
+        const response = await fetch(`${API_URL}/api/dev/auth/verify-link`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token, appId })

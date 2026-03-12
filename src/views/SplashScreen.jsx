@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './SplashScreen.css';
+import { API_URL } from '../config/api';
 
 export default function SplashScreen() {
   const navigate = useNavigate();
@@ -56,7 +57,7 @@ export default function SplashScreen() {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 2000);
           
-          const response = await fetch('http://localhost:5000/api/auth/me', {
+          const response = await fetch(`${API_URL}/api/auth/me`, {
             headers: { 'Authorization': `Bearer ${account.token}` },
             signal: controller.signal
           });

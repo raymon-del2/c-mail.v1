@@ -5,6 +5,7 @@ import './Dashboard.css';
 import './DashboardMobile.css';
 import './Compose.css';
 import './DevApi.css';
+import { API_URL } from '../config/api';
 
 const HighlightText = ({ text, highlight }) => {
   if (!highlight.trim()) return <>{text}</>;
@@ -207,7 +208,7 @@ export default function Dashboard() {
     
     setAiChatsLoading(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/ai/chats/${user._id}`);
+      const res = await fetch(`${API_URL}/api/ai/chats/${user._id}`);
       const data = await res.json();
       if (data.success) {
         setAiChats(data.chats);
@@ -469,7 +470,7 @@ export default function Dashboard() {
     }
     
     try {
-      const response = await fetch(`http://localhost:5000/api/emails/${user._id}?folder=${folderName}`);
+      const response = await fetch(`${API_URL}/api/emails/${user._id}?folder=${folderName}`);
       
       // Handle 304 Not Modified - use cached data
       if (response.status === 304) {
@@ -584,7 +585,7 @@ export default function Dashboard() {
     const autoSaveInterval = setInterval(async () => {
       if (composeTo.trim() || composeSubject.trim() || composeBody.trim()) {
         try {
-          const response = await fetch('http://localhost:5000/api/emails/draft', {
+          const response = await fetch(`${API_URL}/api/emails/draft`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -622,7 +623,7 @@ export default function Dashboard() {
 
   const fetchDevApiCredentials = useCallback(async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/devapi/${user._id}`);
+      const response = await fetch(`${API_URL}/api/devapi/${user._id}`);
       if (response.ok) {
         const data = await response.json();
         setApiKey(data.apiKey);
@@ -635,7 +636,7 @@ export default function Dashboard() {
 
   const fetchConnectedApps = useCallback(async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/user/connected-apps/${user._id}`);
+      const response = await fetch(`${API_URL}/api/user/connected-apps/${user._id}`);
       if (response.ok) {
         const data = await response.json();
         setConnectedApps(data);
@@ -649,7 +650,7 @@ export default function Dashboard() {
     try {
       const newVerified = new Set();
       await Promise.all(urls.map(async (url) => {
-        const response = await fetch(`http://localhost:5000/api/devapi/verify-status/${user._id}?url=${encodeURIComponent(url)}`);
+        const response = await fetch(`${API_URL}/api/devapi/verify-status/${user._id}?url=${encodeURIComponent(url)}`);
         if (response.ok) {
           const data = await response.json();
           if (data.verified) {
@@ -665,7 +666,7 @@ export default function Dashboard() {
 
   const verifyDomain = async (url) => {
     try {
-      const response = await fetch('http://localhost:5000/api/devapi/verify-domain', {
+      const response = await fetch(`${API_URL}/api/devapi/verify-domain`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -693,7 +694,7 @@ export default function Dashboard() {
 
   const revokeAppAccess = async (clientId) => {
     try {
-      const response = await fetch('http://localhost:5000/api/user/revoke', {
+      const response = await fetch(`${API_URL}/api/user/revoke`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user._id, clientId })
@@ -716,7 +717,7 @@ export default function Dashboard() {
     if (!user?._id) return;
     
     try {
-      const response = await fetch(`http://localhost:5000/api/user/${user._id}`);
+      const response = await fetch(`${API_URL}/api/user/${user._id}`);
       if (response.ok) {
         const updatedUser = await response.json();
         
@@ -776,7 +777,7 @@ export default function Dashboard() {
   // Admin News functions
   const fetchNews = useCallback(async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/news/${user._id}`);
+      const response = await fetch(`${API_URL}/api/news/${user._id}`);
       if (response.ok) {
         const data = await response.json();
         setAdminNews(data);
@@ -794,7 +795,7 @@ export default function Dashboard() {
     }
     
     try {
-      const response = await fetch('http://localhost:5000/api/news', {
+      const response = await fetch(`${API_URL}/api/news`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -892,7 +893,7 @@ export default function Dashboard() {
     setIsSavingPhone(true);
     try {
       const fullPhoneNumber = phoneCountryCode + phoneNumber;
-      const response = await fetch('http://localhost:5000/api/user/profile', {
+      const response = await fetch(`${API_URL}/api/user/profile`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -949,7 +950,7 @@ export default function Dashboard() {
         
         case 'SEARCH_CONTACTS': {
           if (!action.query) return 'No search query provided';
-          const res = await fetch('http://localhost:5000/api/ai/search-contacts', {
+          const res = await fetch(`${API_URL}/api/ai/search-contacts`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ query: action.query })
@@ -966,7 +967,7 @@ export default function Dashboard() {
           if (!user || !user._id) return '❌ User not logged in';
           if (!action.to) return '❌ No recipient specified';
           
-          const res = await fetch('http://localhost:5000/api/ai/send-email', {
+          const res = await fetch(`${API_URL}/api/ai/send-email`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1005,7 +1006,7 @@ export default function Dashboard() {
         
         case 'GET_EMAILS': {
           if (!user || !user._id) return '❌ User not logged in';
-          const res = await fetch('http://localhost:5000/api/ai/get-emails', {
+          const res = await fetch(`${API_URL}/api/ai/get-emails`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: user._id, folder: action.folder || 'inbox' })
@@ -1076,7 +1077,7 @@ export default function Dashboard() {
     try {
       if (currentChatId) {
         // Update existing chat
-        await fetch(`http://localhost:5000/api/ai/chats/${currentChatId}`, {
+        await fetch(`${API_URL}/api/ai/chats/${currentChatId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1087,7 +1088,7 @@ export default function Dashboard() {
         });
       } else {
         // Create new chat
-        const res = await fetch('http://localhost:5000/api/ai/chats', {
+        const res = await fetch(`${API_URL}/api/ai/chats`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1110,7 +1111,7 @@ export default function Dashboard() {
 
   const loadChat = async (chatId) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/ai/chats/${user._id}/${chatId}`);
+      const res = await fetch(`${API_URL}/api/ai/chats/${user._id}/${chatId}`);
       const data = await res.json();
       if (data.success) {
         setAiMessages(data.chat.messages);
