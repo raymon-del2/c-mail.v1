@@ -1692,9 +1692,9 @@ export default function Dashboard() {
       {/* AI Assistant Floating Button - Top Right */}
       <div className="cmail-ai-assistant-btn" onClick={() => setShowAiAssistant(true)}>
         <div className="cmail-ai-assistant-circle">
-          <Sparkles size={20} />
+          <Sparkles size={16} />
         </div>
-        <span className="cmail-ai-assistant-label">C-mail Assistant</span>
+        <span className="cmail-ai-assistant-label">Assistant</span>
       </div>
 
       {/* Phone Number Popup Modal */}
