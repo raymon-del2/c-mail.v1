@@ -8,6 +8,8 @@ import Email from './models/Email.js';
 import ApiKey from './models/ApiKey.js';
 import AIChat from './models/AIChat.js';
 import AIGist from './models/AIGist.js';
+import Verification from './models/Verification.js';
+import { sendEmailDirect } from './utils/email.js';
 import Groq from 'groq-sdk';
 
 dotenv.config();
@@ -815,6 +817,220 @@ app.post('/api/user/revoke', async (req, res) => {
   } catch (error) {
     console.error('Revoke access error:', error);
     res.status(500).json({ error: 'Failed to revoke access' });
+  }
+});
+
+// ========== DEV API AUTHENTICATION AS A SERVICE ==========
+// Send OTP for developer app verification
+app.post('/api/dev/auth/send-otp', async (req, res) => {
+  try {
+    const { email, apiKey } = req.body;
+    
+    if (!email || !apiKey) {
+      return res.status(400).json({ error: 'Email and API key required' });
+    }
+    
+    await connectDB();
+    
+    // Verify API key
+    const apiKeyDoc = await ApiKey.findOne({ apiKey });
+    if (!apiKeyDoc) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+    
+    // Generate OTP
+    const otp = Verification.generateOTP();
+    
+    // Save verification record
+    const verification = new Verification({
+      email,
+      code: otp,
+      type: 'otp',
+      appId: apiKeyDoc._id,
+      appName: apiKeyDoc.appName || 'Unknown App'
+    });
+    await verification.save();
+    
+    // Send email with OTP
+    const subject = `Your verification code for ${apiKeyDoc.appName || 'C-mail App'}`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #8b5cf6;">Verification Code</h2>
+        <p>Your verification code for <strong>${apiKeyDoc.appName || 'C-mail App'}</strong> is:</p>
+        <div style="background: #f3f4f6; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 8px; border-radius: 8px; margin: 20px 0;">
+          ${otp}
+        </div>
+        <p>This code expires in 10 minutes.</p>
+        <p style="color: #6b7280; font-size: 12px;">Powered by C-mail Authentication</p>
+      </div>
+    `;
+    
+    await sendEmailDirect(email, subject, html, null, apiKeyDoc.userId);
+    
+    res.json({ success: true, message: 'OTP sent successfully' });
+  } catch (error) {
+    console.error('Send OTP error:', error);
+    res.status(500).json({ error: 'Failed to send OTP' });
+  }
+});
+
+// Verify OTP
+app.post('/api/dev/auth/verify-otp', async (req, res) => {
+  try {
+    const { email, code, apiKey } = req.body;
+    
+    if (!email || !code || !apiKey) {
+      return res.status(400).json({ error: 'Email, code, and API key required' });
+    }
+    
+    await connectDB();
+    
+    // Verify API key
+    const apiKeyDoc = await ApiKey.findOne({ apiKey });
+    if (!apiKeyDoc) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+    
+    // Find verification record
+    const verification = await Verification.findOne({
+      email,
+      type: 'otp',
+      appId: apiKeyDoc._id,
+      verified: false
+    }).sort({ createdAt: -1 });
+    
+    if (!verification) {
+      return res.status(400).json({ error: 'No pending verification found' });
+    }
+    
+    // Verify code
+    if (!verification.verifyCode(code)) {
+      return res.status(400).json({ error: 'Invalid code' });
+    }
+    
+    // Mark as verified
+    verification.verified = true;
+    await verification.save();
+    
+    // Generate auth token for developer
+    const authToken = crypto.randomBytes(32).toString('hex');
+    
+    res.json({
+      success: true,
+      verified: true,
+      authToken,
+      email
+    });
+  } catch (error) {
+    console.error('Verify OTP error:', error);
+    res.status(500).json({ error: 'Failed to verify OTP' });
+  }
+});
+
+// Send Magic Link
+app.post('/api/dev/auth/send-magic-link', async (req, res) => {
+  try {
+    const { email, apiKey, redirectUrl } = req.body;
+    
+    if (!email || !apiKey) {
+      return res.status(400).json({ error: 'Email and API key required' });
+    }
+    
+    await connectDB();
+    
+    // Verify API key
+    const apiKeyDoc = await ApiKey.findOne({ apiKey });
+    if (!apiKeyDoc) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+    
+    // Check if redirect URL is allowed
+    if (redirectUrl && !apiKeyDoc.redirectUrls.includes(redirectUrl)) {
+      return res.status(400).json({ error: 'Invalid redirect URL' });
+    }
+    
+    // Generate token
+    const token = Verification.generateToken();
+    
+    // Save verification record
+    const verification = new Verification({
+      email,
+      code: token,
+      type: 'magic_link',
+      appId: apiKeyDoc._id,
+      appName: apiKeyDoc.appName || 'Unknown App',
+      redirectUrl: redirectUrl || apiKeyDoc.redirectUrls[0]
+    });
+    await verification.save();
+    
+    // Build magic link
+    const magicLink = `https://c-mail.vercel.app/verify?token=${token}&appId=${apiKeyDoc._id}`;
+    
+    // Send email with magic link
+    const subject = `Verify your email for ${apiKeyDoc.appName || 'C-mail App'}`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #8b5cf6;">Verify Your Email</h2>
+        <p>Click the button below to verify your email for <strong>${apiKeyDoc.appName || 'C-mail App'}</strong>:</p>
+        <a href="${magicLink}" style="display: inline-block; background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0;">Verify Email</a>
+        <p style="color: #6b7280; font-size: 12px;">Or copy this link: ${magicLink}</p>
+        <p>This link expires in 10 minutes.</p>
+        <p style="color: #6b7280; font-size: 12px;">Powered by C-mail Authentication</p>
+      </div>
+    `;
+    
+    await sendEmailDirect(email, subject, html, null, apiKeyDoc.userId);
+    
+    res.json({ success: true, message: 'Magic link sent successfully' });
+  } catch (error) {
+    console.error('Send magic link error:', error);
+    res.status(500).json({ error: 'Failed to send magic link' });
+  }
+});
+
+// Verify Magic Link
+app.post('/api/dev/auth/verify-link', async (req, res) => {
+  try {
+    const { token, appId } = req.body;
+    
+    if (!token || !appId) {
+      return res.status(400).json({ error: 'Token and appId required' });
+    }
+    
+    await connectDB();
+    
+    // Hash token for comparison
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    
+    // Find verification record
+    const verification = await Verification.findOne({
+      code: hashedToken,
+      type: 'magic_link',
+      appId,
+      verified: false
+    });
+    
+    if (!verification) {
+      return res.status(400).json({ error: 'Invalid or expired link' });
+    }
+    
+    // Mark as verified
+    verification.verified = true;
+    await verification.save();
+    
+    // Generate auth code for developer
+    const authCode = crypto.randomBytes(16).toString('hex');
+    
+    res.json({
+      success: true,
+      verified: true,
+      email: verification.email,
+      authCode,
+      redirectUrl: verification.redirectUrl
+    });
+  } catch (error) {
+    console.error('Verify link error:', error);
+    res.status(500).json({ error: 'Failed to verify link' });
   }
 });
 

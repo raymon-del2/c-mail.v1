@@ -1,0 +1,79 @@
+.verify-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 20px;
+}
+
+.verify-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 40px;
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.verify-card h2 {
+  color: #fff;
+  margin: 20px 0 10px;
+  font-size: 24px;
+}
+
+.verify-card p {
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+
+.verify-icon {
+  margin-bottom: 10px;
+}
+
+.verify-icon.verifying {
+  color: #8b5cf6;
+  animation: spin 1s linear infinite;
+}
+
+.verify-icon.success {
+  color: #10b981;
+}
+
+.verify-icon.error {
+  color: #ef4444;
+}
+
+.verify-redirect {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5) !important;
+  margin-top: 20px;
+}
+
+.verify-home-btn {
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: transform 0.2s ease;
+}
+
+.verify-home-btn:hover {
+  transform: scale(1.05);
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

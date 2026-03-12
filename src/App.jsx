@@ -5,6 +5,7 @@ import Dashboard from './views/Dashboard';
 import Settings from './views/Settings';
 import AuthAuthorize from './views/AuthAuthorize';
 import ApiDocs from './views/ApiDocs';
+import Verify from './views/Verify';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/api-docs" element={<ApiDocs />} />
         <Route path="/setup-profile" element={<ProfileSetup />} />
         <Route path="/auth/authorize" element={<AuthAuthorize />} />
+        <Route path="/verify" element={<Verify />} />
         <Route path="/:username/api-docs" element={<ApiDocs />} />
         <Route path="/:username" element={<Dashboard />} />
         <Route path="/:username/:folder" element={<Dashboard />} />
