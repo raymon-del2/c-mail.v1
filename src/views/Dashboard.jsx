@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { Mail, Inbox, Send, File, Settings as SettingsIcon, LogOut, Search, Menu, ChevronLeft, X, Edit2, ArrowRight, CheckCircle2, Copy, Check, AlertTriangle, RotateCcw, Trash2, Code2, Globe, Lock, CornerDownRight, Eye, EyeOff, Terminal, Plus, Shield, Megaphone, Phone } from 'lucide-react';
+import { Mail, Inbox, Send, File, Settings as SettingsIcon, LogOut, Search, Menu, ChevronLeft, X, Edit2, ArrowRight, CheckCircle2, Copy, Check, AlertTriangle, RotateCcw, Trash2, Code2, Globe, Lock, CornerDownRight, Eye, EyeOff, Terminal, Plus, Shield, Megaphone, Phone, Sparkles, Send as SendIcon, History, MessageSquare, FolderPlus } from 'lucide-react';
 import './Dashboard.css';
 import './DashboardMobile.css';
 import './Compose.css';
@@ -35,6 +35,11 @@ export default function Dashboard() {
     const savedUser = localStorage.getItem('cmail_user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
+  
+  // Scroll to top on initial load
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   
   // Get folder from URL path on initial load
   const getFolderFromPath = useCallback(() => {
@@ -97,7 +102,14 @@ export default function Dashboard() {
     // Load read news from localStorage
     const saved = localStorage.getItem('cmail_read_news');
     return saved ? JSON.parse(saved) : [];
-  }); // Track which news items user has read
+  });
+  
+  // AI Gist state
+  const [aiGists, setAiGists] = useState([]);
+  const [aiGistInput, setAiGistInput] = useState({ type: 'feature', title: '', content: '', priority: 'medium' });
+  const [aiGistLoading, setAiGistLoading] = useState(false);
+
+  // Track which news items user has read
 
   // Phone number notification state
   const [showPhonePopup, setShowPhonePopup] = useState(false);
@@ -106,6 +118,42 @@ export default function Dashboard() {
   const [isSavingPhone, setIsSavingPhone] = useState(false);
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
+
+  // AI Assistant state
+  const [showAiAssistant, setShowAiAssistant] = useState(false);
+  const [aiMessages, setAiMessages] = useState([]);
+  const [aiInput, setAiInput] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiPendingAction, setAiPendingAction] = useState(null); // Store action awaiting confirmation
+  const [showAiHistory, setShowAiHistory] = useState(false); // Toggle history panel
+  const [aiChats, setAiChats] = useState([]); // Chat history from database
+  const [currentChatId, setCurrentChatId] = useState(null);
+  const [aiChatsLoading, setAiChatsLoading] = useState(false);
+
+  // Fetch AI chat history from database
+  const fetchAiChats = useCallback(async () => {
+    if (!user?._id) return;
+    
+    setAiChatsLoading(true);
+    try {
+      const res = await fetch(`http://localhost:5000/api/ai/chats/${user._id}`);
+      const data = await res.json();
+      if (data.success) {
+        setAiChats(data.chats);
+      }
+    } catch (error) {
+      console.error('Failed to fetch AI chats:', error);
+    } finally {
+      setAiChatsLoading(false);
+    }
+  }, [user?._id]);
+
+  // Load chats when AI assistant opens
+  useEffect(() => {
+    if (showAiAssistant && user?._id) {
+      fetchAiChats();
+    }
+  }, [showAiAssistant, user?._id, fetchAiChats]);
 
   // All country codes data
   const countryCodes = [
@@ -811,6 +859,375 @@ export default function Dashboard() {
     }
   };
 
+  // AI Assistant - parse and execute actions from AI response
+  const executeAiAction = async (action) => {
+    try {
+      if (!action || !action.type) {
+        return 'Invalid action format';
+      }
+
+      switch (action.type) {
+        case 'CONFIRM': {
+          // Store the pending action and ask user for confirmation
+          if (action.pendingAction) {
+            setAiPendingAction(action.pendingAction);
+            return `❓ ${action.message || 'Do you want to proceed?'} (Type "yes" to confirm or "no" to cancel)`;
+          }
+          return 'No action to confirm';
+        }
+        
+        case 'SEARCH_CONTACTS': {
+          if (!action.query) return 'No search query provided';
+          const res = await fetch('http://localhost:5000/api/ai/search-contacts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: action.query })
+          });
+          const data = await res.json();
+          if (data.success && data.contacts && data.contacts.length > 0) {
+            const contactList = data.contacts.map(c => `• ${c.name} (${c.email})`).join('\n');
+            return `Found ${data.contacts.length} contact(s):\n${contactList}`;
+          }
+          return 'No contacts found matching that name.';
+        }
+        
+        case 'SEND_EMAIL': {
+          if (!user || !user._id) return '❌ User not logged in';
+          if (!action.to) return '❌ No recipient specified';
+          
+          const res = await fetch('http://localhost:5000/api/ai/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: action.to,
+              subject: action.subject || 'No Subject',
+              body: action.body || '',
+              fromUserId: user._id,
+              links: action.links || []
+            })
+          });
+          const data = await res.json();
+          if (data.success) {
+            return `✅ Email sent to ${data.email.toName} (${data.email.to})!\nSubject: ${data.email.subject}`;
+          }
+          return `❌ Failed to send email: ${data.error || 'Unknown error'}`;
+        }
+        
+        case 'DRAFT_EMAIL': {
+          // Open compose with pre-filled data
+          setComposeTo(action.to || '');
+          setComposeSubject(action.subject || '');
+          setComposeBody(action.body || '');
+          setIsComposing(true);
+          setShowAiAssistant(false);
+          return `📝 Draft created! Review and send when ready.`;
+        }
+        
+        case 'NAVIGATE': {
+          if (!user || !user.username) return '❌ User not logged in';
+          const path = action.path || 'inbox';
+          setActiveFolder(path);
+          navigate(`/${user.username}/${path}`);
+          setShowAiAssistant(false);
+          return `📍 Navigated to ${path}`;
+        }
+        
+        case 'GET_EMAILS': {
+          if (!user || !user._id) return '❌ User not logged in';
+          const res = await fetch('http://localhost:5000/api/ai/get-emails', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user._id, folder: action.folder || 'inbox' })
+          });
+          const data = await res.json();
+          if (data.success && data.emails && data.emails.length > 0) {
+            const emailList = data.emails.slice(0, 5).map(e => 
+              `• From: ${e.fromName}\n  Subject: ${e.subject}\n  ${e.preview}`
+            ).join('\n\n');
+            return `📬 You have ${data.emails.length} email(s) in ${action.folder || 'inbox'}:\n\n${emailList}`;
+          }
+          return `📭 No emails in ${action.folder || 'inbox'}.`;
+        }
+        
+        case 'POST_COMPLAINT': {
+          if (!user || !user._id) return '❌ User not logged in';
+          const res = await fetch('http://localhost:5000/api/ai-gists', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'complaint',
+              title: action.title || 'User Complaint',
+              content: action.content || '',
+              author: user.username,
+              authorId: user._id,
+              priority: action.priority || 'medium',
+              isPublic: false
+            })
+          });
+          const data = await res.json();
+          if (data.success) {
+            return `📢 Your feedback has been logged! The dev team will review this issue. Thank you for helping us improve!`;
+          }
+          return `❌ Failed to log feedback: ${data.error || 'Unknown error'}`;
+        }
+        
+        default:
+          return `Unknown action: ${action.type}`;
+      }
+    } catch (error) {
+      console.error('Action execution error:', error);
+      return `❌ Error: ${error.message || 'Something went wrong'}`;
+    }
+  };
+
+  // Parse ACTION blocks from AI response
+  const parseActions = (text) => {
+    const actionRegex = /```ACTION\s*\n?([\s\S]*?)\n?```/g;
+    const actions = [];
+    let match;
+    while ((match = actionRegex.exec(text)) !== null) {
+      try {
+        const action = JSON.parse(match[1].trim());
+        actions.push(action);
+      } catch {
+        console.error('Failed to parse action:', match[1]);
+      }
+    }
+    return actions;
+  };
+
+  // AI Chat History Management - Database backed
+  const saveCurrentChat = useCallback(async () => {
+    if (aiMessages.length === 0 || !user?._id) return;
+    
+    const chatTitle = aiMessages[0]?.content?.substring(0, 30) || 'New Chat';
+    
+    try {
+      if (currentChatId) {
+        // Update existing chat
+        await fetch(`http://localhost:5000/api/ai/chats/${currentChatId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user._id,
+            title: chatTitle,
+            messages: aiMessages
+          })
+        });
+      } else {
+        // Create new chat
+        const res = await fetch('http://localhost:5000/api/ai/chats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user._id,
+            title: chatTitle,
+            messages: aiMessages
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          setCurrentChatId(data.chat.id);
+        }
+      }
+      // Refresh chat list
+      fetchAiChats();
+    } catch (error) {
+      console.error('Failed to save chat:', error);
+    }
+  }, [aiMessages, currentChatId, user?._id, fetchAiChats]);
+
+  const loadChat = async (chatId) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/ai/chats/${user._id}/${chatId}`);
+      const data = await res.json();
+      if (data.success) {
+        setAiMessages(data.chat.messages);
+        setCurrentChatId(data.chat.id);
+        setShowAiHistory(false);
+      }
+    } catch (error) {
+      console.error('Failed to load chat:', error);
+    }
+  };
+
+  const startNewChat = async () => {
+    // Save current chat if it has messages
+    if (aiMessages.length > 0) {
+      await saveCurrentChat();
+    }
+    setAiMessages([]);
+    setCurrentChatId(null);
+    setAiPendingAction(null);
+    setShowAiHistory(false);
+  };
+
+  const deleteChat = async (chatId) => {
+    try {
+      await fetch(`http://localhost:5000/api/ai/chats/${user._id}/${chatId}`, {
+        method: 'DELETE'
+      });
+      
+      // Refresh chat list
+      fetchAiChats();
+      
+      // If deleting current chat, clear messages
+      if (currentChatId === chatId) {
+        setAiMessages([]);
+        setCurrentChatId(null);
+      }
+    } catch (error) {
+      console.error('Failed to delete chat:', error);
+    }
+  };
+
+  // Save chat when messages change (debounced)
+  useEffect(() => {
+    if (aiMessages.length > 0 && user?._id) {
+      const timeout = setTimeout(() => {
+        saveCurrentChat();
+      }, 1000); // Debounce 1 second
+      return () => clearTimeout(timeout);
+    }
+  }, [aiMessages, saveCurrentChat, user?._id]);
+
+  // AI Assistant - send message with streaming and action execution
+  const sendAiMessage = async () => {
+    if (!aiInput.trim() || aiLoading) return;
+
+    // Check if user is responding to a confirmation prompt
+    const inputLower = aiInput.toLowerCase().trim();
+    if (aiPendingAction) {
+      if (inputLower === 'yes' || inputLower === 'ok' || inputLower === 'sure' || inputLower === 'go ahead') {
+        // User confirmed - execute the pending action
+        const userMessage = { role: 'user', content: aiInput };
+        setAiMessages(prev => [...prev, userMessage]);
+        setAiInput('');
+        setAiLoading(true);
+        
+        const result = await executeAiAction(aiPendingAction);
+        setAiPendingAction(null);
+        
+        setAiMessages(prev => [...prev, { role: 'assistant', content: result }]);
+        setAiLoading(false);
+        return;
+      } else if (inputLower === 'no' || inputLower === 'cancel' || inputLower === 'nevermind') {
+        // User cancelled
+        const userMessage = { role: 'user', content: aiInput };
+        setAiMessages(prev => [...prev, userMessage]);
+        setAiInput('');
+        setAiPendingAction(null);
+        setAiMessages(prev => [...prev, { role: 'assistant', content: '❌ Action cancelled. Is there anything else I can help you with?' }]);
+        return;
+      }
+      // If input is neither yes nor no, clear pending action and continue normal flow
+      setAiPendingAction(null);
+    }
+
+    const userMessage = { role: 'user', content: aiInput };
+    setAiMessages(prev => [...prev, userMessage]);
+    setAiInput('');
+    setAiLoading(true);
+
+    try {
+      const response = await fetch('http://localhost:5000/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [...aiMessages, userMessage],
+          context: { 
+            userId: user?._id,
+            username: user?.username, 
+            email: user?.email,
+            name: `${user?.firstName} ${user?.secondName}`,
+            currentFolder: activeFolder,
+            pendingAction: aiPendingAction
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('AI request failed');
+      }
+
+      // Handle streaming response
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantMessage = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.content) {
+                assistantMessage += data.content;
+                // Update message in real-time
+                setAiMessages(prev => {
+                  const updated = [...prev];
+                  const lastIdx = updated.length - 1;
+                  if (lastIdx >= 0 && updated[lastIdx].role === 'assistant') {
+                    updated[lastIdx] = { role: 'assistant', content: assistantMessage };
+                  } else {
+                    updated.push({ role: 'assistant', content: assistantMessage });
+                  }
+                  return updated;
+                });
+              }
+            } catch {
+              // Skip invalid JSON
+            }
+          }
+        }
+      }
+
+      // Parse and execute actions from the response
+      const actions = parseActions(assistantMessage);
+      if (actions && actions.length > 0) {
+        // Execute actions and collect results
+        const results = [];
+        for (const action of actions) {
+          try {
+            const result = await executeAiAction(action);
+            if (result) results.push(result);
+          } catch (err) {
+            console.error('Action failed:', err);
+            results.push(`❌ Action failed: ${err.message || 'Unknown error'}`);
+          }
+        }
+        
+        // Add action results to messages
+        if (results.length > 0) {
+          // Clean the action blocks from the message for display
+          const cleanMessage = assistantMessage.replace(/```ACTION[\s\S]*?```/g, '').trim();
+          
+          setAiMessages(prev => {
+            const updated = [...prev];
+            const lastIdx = updated.length - 1;
+            if (lastIdx >= 0 && updated[lastIdx].role === 'assistant') {
+              updated[lastIdx] = { 
+                role: 'assistant', 
+                content: cleanMessage + '\n\n' + results.join('\n\n')
+              };
+            }
+            return updated;
+          });
+        }
+      }
+    } catch (error) {
+      console.error('AI error:', error);
+      setAiMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' }]);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   // Load admin news when folder changes
   useEffect(() => {
     if (user?._id && activeFolder === 'admin-news') {
@@ -838,6 +1255,81 @@ export default function Dashboard() {
     const interval = setInterval(fetchAllNews, 30000);
     return () => clearInterval(interval);
   }, [fetchAllNews]);
+
+  // Fetch AI Gists
+  const fetchAiGists = useCallback(async () => {
+    if (!user?._id) return;
+    setAiGistLoading(true);
+    try {
+      const res = await fetch(`http://localhost:5000/api/ai-gists?admin=${isAdmin}`);
+      const data = await res.json();
+      if (data.success) {
+        setAiGists(data.gists);
+      }
+    } catch (error) {
+      console.error('Fetch AI gists error:', error);
+    } finally {
+      setAiGistLoading(false);
+    }
+  }, [user?._id, isAdmin]);
+
+  // Load AI Gists when admin-news folder is active
+  useEffect(() => {
+    if (activeFolder === 'admin-news') {
+      fetchAiGists();
+    }
+  }, [activeFolder, fetchAiGists]);
+
+  // Create AI Gist (admin posts feature/update)
+  const createAiGist = async () => {
+    if (!aiGistInput.title.trim() || !aiGistInput.content.trim()) return;
+    
+    try {
+      const res = await fetch('http://localhost:5000/api/ai-gists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...aiGistInput,
+          author: 'admin',
+          authorId: user._id,
+          isPublic: true
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAiGistInput({ type: 'feature', title: '', content: '', priority: 'medium' });
+        fetchAiGists();
+      }
+    } catch (error) {
+      console.error('Create AI gist error:', error);
+    }
+  };
+
+  // Update AI Gist status
+  const updateAiGistStatus = async (gistId, status) => {
+    try {
+      await fetch(`http://localhost:5000/api/ai-gists/${gistId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      fetchAiGists();
+    } catch (error) {
+      console.error('Update AI gist error:', error);
+    }
+  };
+
+  // Delete AI Gist
+  const deleteAiGist = async (gistId) => {
+    try {
+      await fetch(`http://localhost:5000/api/ai-gists/${gistId}`, {
+        method: 'DELETE'
+      });
+      fetchAiGists();
+    } catch (error) {
+      console.error('Delete AI gist error:', error);
+    }
+  };
 
   const generateApiKey = async () => {
     try {
@@ -1197,6 +1689,14 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* AI Assistant Floating Button - Top Right */}
+      <div className="cmail-ai-assistant-btn" onClick={() => setShowAiAssistant(true)}>
+        <div className="cmail-ai-assistant-circle">
+          <Sparkles size={20} />
+        </div>
+        <span className="cmail-ai-assistant-label">C-mail Assistant</span>
+      </div>
+
       {/* Phone Number Popup Modal */}
       {showPhonePopup && (
         <div className="cmail-phone-popup-overlay" onClick={() => setShowPhonePopup(false)}>
@@ -1258,7 +1758,7 @@ export default function Dashboard() {
               
               <input
                 type="tel"
-                placeholder="799865071"
+                placeholder="123456789"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9]/g, ''))}
                 className="cmail-phone-popup-input"
@@ -1278,6 +1778,138 @@ export default function Dashboard() {
               >
                 {isSavingPhone ? 'Saving...' : 'Done'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Assistant Popup Modal */}
+      {showAiAssistant && (
+        <div className="cmail-ai-popup-overlay" onClick={() => setShowAiAssistant(false)}>
+          <div className="cmail-ai-popup" onClick={e => e.stopPropagation()}>
+            <div className="cmail-ai-popup-header">
+              <div className="cmail-ai-popup-title">
+                <Sparkles size={20} className="cmail-ai-icon" />
+                <h3>C-mail Assistant</h3>
+              </div>
+              <div className="cmail-ai-header-actions">
+                <button 
+                  className={`cmail-ai-header-btn ${showAiHistory ? 'active' : ''}`} 
+                  onClick={() => setShowAiHistory(!showAiHistory)}
+                  title="Chat History"
+                >
+                  <History size={18} />
+                </button>
+                <button 
+                  className="cmail-ai-header-btn" 
+                  onClick={startNewChat}
+                  title="New Chat"
+                >
+                  <FolderPlus size={18} />
+                </button>
+                <button className="cmail-ai-close" onClick={() => setShowAiAssistant(false)}>
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            
+            <div className="cmail-ai-content">
+              {/* History Sidebar */}
+              {showAiHistory && (
+                <div className="cmail-ai-history-sidebar">
+                  <div className="cmail-ai-history-header">
+                    <h4>Chat History</h4>
+                    <span className="cmail-ai-history-count">{aiChats.length} chats</span>
+                  </div>
+                  <div className="cmail-ai-history-list">
+                    {aiChatsLoading ? (
+                      <div className="cmail-ai-history-empty">
+                        <div className="cmail-ai-loading-spinner"></div>
+                        <p>Loading chats...</p>
+                      </div>
+                    ) : aiChats.length === 0 ? (
+                      <div className="cmail-ai-history-empty">
+                        <MessageSquare size={24} />
+                        <p>No previous chats</p>
+                      </div>
+                    ) : (
+                      aiChats.map(chat => (
+                        <div 
+                          key={chat.id} 
+                          className={`cmail-ai-history-item ${currentChatId === chat.id ? 'active' : ''}`}
+                          onClick={() => loadChat(chat.id)}
+                        >
+                          <div className="cmail-ai-history-item-content">
+                            <MessageSquare size={14} />
+                            <div className="cmail-ai-history-item-info">
+                              <span className="cmail-ai-history-item-title">{chat.title}</span>
+                              <span className="cmail-ai-history-item-date">
+                                {new Date(chat.updatedAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                          <button 
+                            className="cmail-ai-history-item-delete"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteChat(chat.id);
+                            }}
+                            title="Delete chat"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Chat Area */}
+              <div className="cmail-ai-chat-area">
+                <div className="cmail-ai-messages">
+                  {aiMessages.length === 0 && (
+                    <div className="cmail-ai-welcome">
+                      <Sparkles size={32} className="cmail-ai-welcome-icon" />
+                      <p>Hi! I'm your C-mail Assistant. I can help you with:</p>
+                      <ul>
+                        <li>Email composition tips</li>
+                        <li>Understanding features</li>
+                        <li>API integration help</li>
+                        <li>Account settings guidance</li>
+                      </ul>
+                    </div>
+                  )}
+                  {aiMessages.map((msg, i) => (
+                    <div key={i} className={`cmail-ai-message ${msg.role}`}>
+                      {msg.content}
+                    </div>
+                  ))}
+                  {aiLoading && (
+                    <div className="cmail-ai-message assistant cmail-ai-typing">
+                      <span></span><span></span><span></span>
+                    </div>
+                  )}
+                </div>
+                <div className="cmail-ai-input-area">
+                  <input
+                    type="text"
+                    placeholder="Ask me anything..."
+                    value={aiInput}
+                    onChange={(e) => setAiInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && sendAiMessage()}
+                    className="cmail-ai-input"
+                    disabled={aiLoading}
+                  />
+                  <button 
+                    className="cmail-ai-send" 
+                    onClick={sendAiMessage}
+                    disabled={aiLoading || !aiInput.trim()}
+                  >
+                    <SendIcon size={18} />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1925,6 +2557,154 @@ curl -X POST https://c-mail.vercel.app/api/v1/send \\
               {/* Right column - Admin Info */}
               {isAdmin && (
                 <div className="cmail-devapi-col-right">
+                  {/* AI Gist Section */}
+                  <div className="cmail-devapi-card">
+                    <div className="cmail-devapi-card-header">
+                      <Sparkles size={16} className="cmail-devapi-card-icon" />
+                      <h2>AI Gist</h2>
+                    </div>
+                    <p className="cmail-devapi-card-desc">
+                      Post upcoming features and view user complaints logged by the AI.
+                    </p>
+                    
+                    <div className="cmail-devapi-card-body">
+                      {/* Create Gist Form */}
+                      <div style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid var(--bg-border)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <select
+                              value={aiGistInput.type}
+                              onChange={e => setAiGistInput({ ...aiGistInput, type: e.target.value })}
+                              className="cmail-devapi-url-input"
+                              style={{ width: '120px' }}
+                            >
+                              <option value="feature">Feature</option>
+                              <option value="update">Update</option>
+                              <option value="announcement">Announcement</option>
+                            </select>
+                            <select
+                              value={aiGistInput.priority}
+                              onChange={e => setAiGistInput({ ...aiGistInput, priority: e.target.value })}
+                              className="cmail-devapi-url-input"
+                              style={{ width: '100px' }}
+                            >
+                              <option value="low">Low</option>
+                              <option value="medium">Medium</option>
+                              <option value="high">High</option>
+                            </select>
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Title..."
+                            value={aiGistInput.title}
+                            onChange={e => setAiGistInput({ ...aiGistInput, title: e.target.value })}
+                            className="cmail-devapi-url-input"
+                            style={{ width: '100%' }}
+                          />
+                          <textarea
+                            placeholder="Describe the feature/update..."
+                            value={aiGistInput.content}
+                            onChange={e => setAiGistInput({ ...aiGistInput, content: e.target.value })}
+                            className="cmail-compose-textarea"
+                            rows={3}
+                            style={{ width: '100%', resize: 'vertical' }}
+                          />
+                          <button
+                            className="cmail-devapi-btn-primary"
+                            onClick={createAiGist}
+                            disabled={!aiGistInput.title.trim() || !aiGistInput.content.trim()}
+                          >
+                            <Sparkles size={14} />
+                            Post to AI Gist
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Gists List */}
+                      <div className="cmail-devapi-status-list" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                        {aiGistLoading ? (
+                          <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
+                            Loading...
+                          </div>
+                        ) : aiGists.length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
+                            No gists yet
+                          </div>
+                        ) : (
+                          aiGists.map(gist => (
+                            <div 
+                              key={gist.id} 
+                              style={{ 
+                                padding: '12px', 
+                                background: 'var(--bg-base)', 
+                                borderRadius: '8px', 
+                                marginBottom: '8px',
+                                borderLeft: `3px solid ${
+                                  gist.type === 'complaint' ? '#ef4444' : 
+                                  gist.type === 'feature' ? '#8b5cf6' : 
+                                  gist.type === 'update' ? '#3b82f6' : '#10b981'
+                                }`
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                                <span style={{ 
+                                  fontSize: '11px', 
+                                  textTransform: 'uppercase',
+                                  fontWeight: 600,
+                                  color: gist.type === 'complaint' ? '#ef4444' : '#8b5cf6'
+                                }}>
+                                  {gist.type}
+                                </span>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                  {gist.type === 'complaint' && (
+                                    <select
+                                      value={gist.status}
+                                      onChange={e => updateAiGistStatus(gist.id, e.target.value)}
+                                      style={{ 
+                                        fontSize: '11px', 
+                                        padding: '2px 6px', 
+                                        borderRadius: '4px',
+                                        background: 'var(--bg-surface)',
+                                        border: '1px solid var(--bg-border)',
+                                        color: 'var(--text-secondary)'
+                                      }}
+                                    >
+                                      <option value="pending">Pending</option>
+                                      <option value="in_progress">In Progress</option>
+                                      <option value="resolved">Resolved</option>
+                                      <option value="dismissed">Dismissed</option>
+                                    </select>
+                                  )}
+                                  <button
+                                    onClick={() => deleteAiGist(gist.id)}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: 'var(--text-secondary)',
+                                      cursor: 'pointer',
+                                      padding: '2px'
+                                    }}
+                                    title="Delete"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                              <h4 style={{ margin: '0 0 4px 0', fontSize: '13px' }}>{gist.title}</h4>
+                              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                                {gist.content}
+                              </p>
+                              <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                                by {gist.author} • {new Date(gist.createdAt).toLocaleDateString()}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Admin Info Card */}
                   <div className="cmail-devapi-card cmail-devapi-card-dashed">
                     <div className="cmail-devapi-card-header-sm">
                       <h2>Admin Info</h2>

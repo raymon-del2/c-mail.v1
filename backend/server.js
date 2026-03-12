@@ -6,11 +6,17 @@ import process from 'process';
 import User from './models/User.js';
 import Email from './models/Email.js';
 import ApiKey from './models/ApiKey.js';
+import AIChat from './models/AIChat.js';
+import AIGist from './models/AIGist.js';
+import Groq from 'groq-sdk';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Initialize Groq AI client
+const groq = new Groq({ apiKey: 'process.env.GROQ_API_KEY' });
 
 // Check if MONGODB_URI is set
 if (!process.env.MONGODB_URI) {
@@ -48,8 +54,45 @@ async function connectDB() {
   }
 }
 
+// Test endpoint - GET
+app.get('/api/test', async (req, res) => {
+  try {
+    // Try to connect to MongoDB
+    await connectDB();
+    res.json({ 
+      success: true, 
+      message: 'Server and MongoDB are running', 
+      mongoConnected: mongoose.connection.readyState === 1,
+      timestamp: new Date().toISOString() 
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Server running but MongoDB connection failed',
+      error: err.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 app.post('/api/signup', async (req, res) => {
   try {
+    // Check if MONGODB_URI is set
+    if (!process.env.MONGODB_URI) {
+      return res.status(500).json({ 
+        error: 'Database not configured',
+        details: 'MONGODB_URI environment variable is not set'
+      });
+    }
+    
+    // Lazy connect to MongoDB with timeout
+    await Promise.race([
+      connectDB(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('MongoDB connection timeout')), 6000)
+      )
+    ]);
+    
     const { username, email, password, firstName, secondName } = req.body;
     
     const existingUser = await User.findOne({ 
@@ -88,8 +131,21 @@ app.post('/api/signup', async (req, res) => {
 
 app.post('/api/login', async (req, res) => {
   try {
-    // Lazy connect to MongoDB
-    await connectDB();
+    // Check if MONGODB_URI is set
+    if (!process.env.MONGODB_URI) {
+      return res.status(500).json({ 
+        error: 'Database not configured',
+        details: 'MONGODB_URI environment variable is not set'
+      });
+    }
+    
+    // Lazy connect to MongoDB with timeout
+    await Promise.race([
+      connectDB(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('MongoDB connection timeout')), 6000)
+      )
+    ]);
     
     console.log('Login request body:', req.body);
     const { email, password } = req.body;
@@ -125,9 +181,31 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Profile update endpoint
 app.put('/api/profile', async (req, res) => {
+  console.log('PUT /api/profile called with body:', req.body);
   try {
+    // Check if MONGODB_URI is set
+    if (!process.env.MONGODB_URI) {
+      console.log('MONGODB_URI not set');
+      return res.status(500).json({ 
+        error: 'Database not configured',
+        details: 'MONGODB_URI environment variable is not set'
+      });
+    }
+    
+    // Lazy connect to MongoDB with timeout
+    console.log('Connecting to MongoDB...');
+    await Promise.race([
+      connectDB(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('MongoDB connection timeout')), 6000)
+      )
+    ]);
+    console.log('MongoDB connected');
+    
     const { userId, profileUrl } = req.body;
+    console.log('Updating user:', userId, 'with profileUrl:', profileUrl);
     
     const user = await User.findByIdAndUpdate(
       userId,
@@ -136,17 +214,24 @@ app.put('/api/profile', async (req, res) => {
     ).select('-password');
     
     if (!user) {
+      console.log('User not found:', userId);
       return res.status(404).json({ error: 'User not found' });
     }
     
+    console.log('Profile updated successfully');
     res.json({ 
       message: 'Profile updated successfully', 
       user 
     });
   } catch (error) {
     console.error('Profile update error:', error);
-    res.status(500).json({ error: 'Failed to update profile' });
+    res.status(500).json({ error: 'Failed to update profile', details: error.message });
   }
+});
+
+// Test GET endpoint for /api/profile
+app.get('/api/profile', (req, res) => {
+  res.json({ message: 'Profile endpoint is working. Use PUT to update.' });
 });
 
 app.get('/api/users/:id', async (req, res) => {
@@ -1250,6 +1335,22 @@ app.get('/api/user/:userId', async (req, res) => {
 // Update user profile settings
 app.patch('/api/user/profile', async (req, res) => {
   try {
+    // Check if MONGODB_URI is set
+    if (!process.env.MONGODB_URI) {
+      return res.status(500).json({ 
+        error: 'Database not configured',
+        details: 'MONGODB_URI environment variable is not set'
+      });
+    }
+    
+    // Lazy connect to MongoDB with timeout
+    await Promise.race([
+      connectDB(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('MongoDB connection timeout')), 6000)
+      )
+    ]);
+    
     const { userId, firstName, secondName, number, profileUrl } = req.body;
     
     if (!userId) {
@@ -1283,6 +1384,691 @@ app.patch('/api/user/profile', async (req, res) => {
     console.error('Update profile error:', error);
     res.status(500).json({ error: 'Failed to update profile' });
   }
+});
+
+// AI Assistant endpoint with Groq - streaming for token limit handling
+app.post('/api/ai/chat', async (req, res) => {
+  try {
+    const { messages, context } = req.body;
+    
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ error: 'Messages array is required' });
+    }
+
+    // Build comprehensive system prompt with full C-mail context
+    const systemPrompt = `You are C-mail Assistant, an intelligent AI integrated into the C-mail email platform. You have FULL ACCESS to all C-mail features and can EXECUTE ACTIONS on behalf of the user.
+
+## YOUR CAPABILITIES
+You can perform these actions by responding with JSON action blocks:
+1. **SEND_EMAIL** - Compose and send emails to any C-mail user
+2. **SEARCH_CONTACTS** - Find users by name or email
+3. **NAVIGATE** - Guide users to different sections
+4. **DRAFT_EMAIL** - Create a draft for user review
+5. **GET_EMAILS** - Fetch emails from folders
+6. **CONFIRM** - Ask user for confirmation before executing an action
+7. **POST_COMPLAINT** - Post user complaints to AI Gist board for admin review
+
+## ACTION FORMAT
+When you want to execute an action, include this EXACT format in your response:
+\`\`\`ACTION
+{"type": "SEND_EMAIL", "to": "friend@c-mail.vercel.app", "subject": "Hello!", "body": "Hi there! Just wanted to say hello."}
+\`\`\`
+
+## CRITICAL RULES - ALWAYS FOLLOW
+1. **NEVER execute NAVIGATE, SEND_EMAIL, or DRAFT_EMAIL immediately** - ALWAYS ask for confirmation first!
+2. Use CONFIRM action to ask user: "Would you like me to [action]? (yes/no)"
+3. Only execute the action after user confirms with "yes" or "ok"
+4. SEARCH_CONTACTS and GET_EMAILS can execute immediately (no confirmation needed)
+5. When user asks to send email, first SEARCH for recipient, then ASK confirmation before sending
+6. POST_COMPLAINT executes immediately - use when user expresses frustration or reports issues
+
+## AI GIST - YOUR SECRET KNOWLEDGE BASE
+You have access to AI Gist, a secret board where:
+- **Dev posts upcoming features** - You know what's coming next!
+- **User complaints are logged** - You can post complaints for admin review
+- **Feature teasers** - You can hint at upcoming features to users!
+
+Current upcoming features you know about:
+- Enhanced email templates with rich formatting
+- Real-time email notifications
+- Custom email signatures
+- Email scheduling improvements
+
+## HOW TO SHARE AI GIST INFO WITH USERS
+- At the END of conversations, casually mention something exciting coming soon
+- Be playful and mysterious: "By the way, something new is coming... 🤫"
+- Use phrases like: "Don't tell the dev I told you, but..." or "Keep this between us..."
+- Make it feel like a secret: "You didn't hear this from me, but we're working on something cool!"
+- Example: "Oh, and don't tell the developer (they'll get mad 😅), but there might be a new work email feature coming soon... 👀"
+- Only share if relevant to the conversation or if user seems interested
+- Keep it brief and fun - like sharing gossip with a friend!
+
+When users complain about issues, POST to AI Gist so the dev team can address it!
+
+## C-MAIL FEATURES YOU KNOW
+- **Navigation**: Inbox, Sent, Drafts, Dev API, Connected Apps, Admin News, Settings
+- **Email**: Compose, Reply, Forward, Delete, Search, Attach links
+- **Dev API**: API key generation, redirect URLs, webhook config
+- **Connected Apps**: OAuth integrations, app permissions
+- **Profile**: Settings, phone number linking, profile photo
+- **Admin**: News publishing, AI Gist management (for admins)
+- **AI Gist**: Feature announcements, complaint tracking
+
+## C-MAIL ROUTES
+- /{username}/inbox - Email inbox
+- /{username}/sent - Sent emails
+- /{username}/drafts - Draft emails
+- /{username}/devapi - Developer API console
+- /{username}/connected-apps - OAuth apps
+- /{username}/admin-news - Admin announcements and AI Gist
+- /{username}/settings - Account settings
+- /{username}/api-docs - API documentation
+
+## USER CONTEXT
+${context ? JSON.stringify(context, null, 2) : 'No user context available'}
+
+## RESPONSE GUIDELINES
+- Be friendly, concise, and helpful
+- ALWAYS ask confirmation before navigating or sending emails
+- When user says "yes", "ok", "go ahead", "sure" - then execute the pending action
+- When user says "no", "cancel", "nevermind" - abort the action
+- When user complains, POST to AI Gist so dev team knows
+- Share upcoming features when relevant: "Did you know? We're working on [feature]!"
+- Keep responses under 500 words unless technical explanations needed
+
+## EMAIL COMPOSITION RULES
+- When user asks to send an email, compose a GREAT message - be creative and expressive!
+- Use emojis to make emails friendly and engaging 🎉😊✨
+- Match the tone the user wants (friendly, professional, casual, excited)
+- Include warm greetings and sign-offs
+- If user gives specific content, use it exactly but enhance with appropriate emojis
+- Examples of good email composition:
+  • "Hey! 👋 Just wanted to check in and see how you're doing! Hope everything is going great! 😊"
+  • "Hi there! 🌟 Quick update on our project - we're making awesome progress! Can't wait to share more! 🚀"
+  • "Hello! 🎉 You're invited to our event this weekend! It's going to be super fun! 🎊✨"
+
+## EXAMPLE INTERACTIONS
+
+User: "Send a hello message to my friend John"
+Assistant: "I'll search for John first!"
+\`\`\`ACTION
+{"type": "SEARCH_CONTACTS", "query": "John"}
+\`\`\`
+[After finding John]
+"Found John! Here's what I'll send:
+📧 Subject: Hey there! 👋
+📝 Body: Hi John! Just wanted to say hello and hope you're having an awesome day! 😊✨
+
+Ready to send?"
+\`\`\`ACTION
+{"type": "CONFIRM", "message": "Send this friendly hello email to John?", "pendingAction": {"type": "SEND_EMAIL", "to": "john@c-mail.vercel.app", "subject": "Hey there! 👋", "body": "Hi John! 👋\\n\\nJust wanted to say hello and hope you're having an awesome day! 😊✨\\n\\nCheers!"}}
+\`\`\`
+
+User: "Send an email to Sarah saying I miss her"
+Assistant: "I'll search for Sarah!"
+\`\`\`ACTION
+{"type": "SEARCH_CONTACTS", "query": "Sarah"}
+\`\`\`
+[After finding Sarah]
+"Found Sarah! Here's a sweet message:
+📧 Subject: Thinking of you 💭
+📝 Body: Hey Sarah! 💕\\n\\nJust wanted to reach out and say I miss you! Hope we can catch up soon! 🤗✨\\n\\nMiss you lots! 💫
+
+Send this to Sarah?"
+\`\`\`ACTION
+{"type": "CONFIRM", "message": "Send this message to Sarah?", "pendingAction": {"type": "SEND_EMAIL", "to": "sarah@c-mail.vercel.app", "subject": "Thinking of you 💭", "body": "Hey Sarah! 💕\\n\\nJust wanted to reach out and say I miss you! Hope we can catch up soon! 🤗✨\\n\\nMiss you lots! 💫"}}
+\`\`\`
+
+User: "This app is so slow, it takes forever to load emails!"
+Assistant: "I'm sorry you're experiencing performance issues! Let me log this complaint so our dev team can investigate."
+\`\`\`ACTION
+{"type": "POST_COMPLAINT", "title": "App Performance Issue", "content": "User reports slow email loading times", "priority": "high"}
+\`\`\`
+"Your feedback has been logged! The dev team will look into this. In the meantime, try refreshing the page."
+
+User: "What new features are coming?"
+Assistant: "Great question! Here's what we're working on:
+• Enhanced email templates with rich formatting
+• Real-time email notifications
+• Custom email signatures
+• Email scheduling improvements
+
+Exciting things ahead! 🚀"
+
+User: "Go to my settings"
+Assistant: "Would you like me to take you to the Settings page?"
+\`\`\`ACTION
+{"type": "CONFIRM", "message": "Navigate to Settings?", "pendingAction": {"type": "NAVIGATE", "path": "settings"}}
+\`\`\`
+
+User: "yes"
+Assistant: "Taking you there now!"
+\`\`\`ACTION
+{"type": "NAVIGATE", "path": "settings"}
+\`\`\`
+
+User: "What's in my inbox?"
+Assistant: "Let me check your inbox!"
+\`\`\`ACTION
+{"type": "GET_EMAILS", "folder": "inbox"}
+\`\`\``;
+
+    // Use streaming to handle token limits
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages.slice(-10) // Keep last 10 messages for context window
+      ],
+      model: 'llama-3.3-70b-versatile',
+      stream: true,
+      max_tokens: 2048,
+      temperature: 0.7,
+      top_p: 0.9
+    });
+
+    // Set headers for SSE streaming
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Stream the response
+    for await (const chunk of chatCompletion) {
+      const content = chunk.choices[0]?.delta?.content || '';
+      if (content) {
+        res.write(`data: ${JSON.stringify({ content })}\n\n`);
+      }
+    }
+
+    res.write('data: [DONE]\n\n');
+    res.end();
+  } catch (error) {
+    console.error('AI chat error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'AI assistant temporarily unavailable', details: error.message });
+    } else {
+      res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+      res.end();
+    }
+  }
+});
+
+// AI Action executor - search contacts
+app.post('/api/ai/search-contacts', async (req, res) => {
+  try {
+    const { query } = req.body;
+    
+    if (!query) {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    await connectDB();
+    
+    // Search users by name or email (case-insensitive)
+    const users = await User.find({
+      $or: [
+        { firstName: { $regex: query, $options: 'i' } },
+        { secondName: { $regex: query, $options: 'i' } },
+        { email: { $regex: query, $options: 'i' } },
+        { username: { $regex: query, $options: 'i' } }
+      ]
+    }).select('firstName secondName email username profileUrl').limit(10);
+
+    res.json({ 
+      success: true, 
+      contacts: users.map(u => ({
+        name: `${u.firstName} ${u.secondName}`,
+        email: u.email,
+        username: u.username,
+        profileUrl: u.profileUrl
+      }))
+    });
+  } catch (error) {
+    console.error('Search contacts error:', error);
+    res.status(500).json({ error: 'Failed to search contacts' });
+  }
+});
+
+// AI Action executor - send email
+app.post('/api/ai/send-email', async (req, res) => {
+  try {
+    const { to, subject, body, fromUserId, links } = req.body;
+    
+    if (!to || !fromUserId) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    await connectDB();
+    
+    // Find recipient by email or username
+    const recipient = await User.findOne({
+      $or: [
+        { email: to },
+        { username: to.replace('@c-mail.vercel.app', '').replace('@', '') }
+      ]
+    });
+    
+    if (!recipient) {
+      return res.status(404).json({ error: 'Recipient not found' });
+    }
+
+    // Find sender
+    const sender = await User.findById(fromUserId);
+    if (!sender) {
+      return res.status(404).json({ error: 'Sender not found' });
+    }
+
+    const senderName = `${sender.firstName} ${sender.secondName}`;
+    const recipientName = `${recipient.firstName} ${recipient.secondName}`;
+
+    // Create sent copy for sender
+    const sentEmail = new Email({
+      sender: sender._id,
+      senderUsername: sender.username,
+      senderName: senderName,
+      recipient: recipient._id,
+      recipientUsername: recipient.username,
+      subject: subject || 'No Subject',
+      body: body || '',
+      links: links || [],
+      folder: 'sent',
+      read: true,
+      starred: false
+    });
+
+    await sentEmail.save();
+
+    // Create inbox copy for recipient
+    const inboxEmail = new Email({
+      sender: sender._id,
+      senderUsername: sender.username,
+      senderName: senderName,
+      recipient: recipient._id,
+      recipientUsername: recipient.username,
+      subject: subject || 'No Subject',
+      body: body || '',
+      links: links || [],
+      folder: 'inbox',
+      read: false,
+      starred: false
+    });
+
+    await inboxEmail.save();
+
+    res.json({ 
+      success: true, 
+      message: 'Email sent successfully',
+      email: {
+        to: recipient.email,
+        toName: recipientName,
+        subject: subject || 'No Subject'
+      }
+    });
+  } catch (error) {
+    console.error('Send email error:', error);
+    res.status(500).json({ error: 'Failed to send email' });
+  }
+});
+
+// AI Action executor - get emails
+app.post('/api/ai/get-emails', async (req, res) => {
+  try {
+    const { userId, folder } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    await connectDB();
+    
+    const emails = await Email.find({
+      $or: [
+        { senderId: userId, folder: 'sent' },
+        { recipientId: userId, folder: folder || 'inbox' }
+      ]
+    }).sort({ createdAt: -1 }).limit(20);
+
+    res.json({ 
+      success: true, 
+      emails: emails.map(e => ({
+        id: e._id,
+        from: e.from,
+        fromName: e.fromName,
+        to: e.to,
+        subject: e.subject,
+        preview: e.body?.substring(0, 100) + '...',
+        date: e.createdAt,
+        read: e.read
+      }))
+    });
+  } catch (error) {
+    console.error('Get emails error:', error);
+    res.status(500).json({ error: 'Failed to get emails' });
+  }
+});
+
+// Non-streaming fallback for simple queries
+app.post('/api/ai/quick', async (req, res) => {
+  try {
+    const { prompt, context } = req.body;
+    
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
+
+    const systemPrompt = `You are C-mail Assistant. Respond briefly and helpfully to: "${prompt}"
+${context ? `Context: ${JSON.stringify(context)}` : ''}`;
+
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt }
+      ],
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 512,
+      temperature: 0.7
+    });
+
+    const response = chatCompletion.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
+    res.json({ response });
+  } catch (error) {
+    console.error('AI quick error:', error);
+    res.status(500).json({ error: 'AI assistant unavailable', details: error.message });
+  }
+});
+
+// AI Chat History - Get all chats for a user
+app.get('/api/ai/chats/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    await connectDB();
+    
+    const chats = await AIChat.find({ userId })
+      .sort({ updatedAt: -1 })
+      .select('title createdAt updatedAt messages');
+    
+    res.json({ 
+      success: true, 
+      chats: chats.map(chat => ({
+        id: chat._id,
+        title: chat.title,
+        createdAt: chat.createdAt,
+        updatedAt: chat.updatedAt,
+        messageCount: chat.messages.length,
+        preview: chat.messages[chat.messages.length - 1]?.content?.substring(0, 50) || ''
+      }))
+    });
+  } catch (error) {
+    console.error('Get AI chats error:', error);
+    res.status(500).json({ error: 'Failed to get chat history' });
+  }
+});
+
+// AI Chat History - Get single chat
+app.get('/api/ai/chats/:userId/:chatId', async (req, res) => {
+  try {
+    const { userId, chatId } = req.params;
+    
+    await connectDB();
+    
+    const chat = await AIChat.findOne({ _id: chatId, userId });
+    
+    if (!chat) {
+      return res.status(404).json({ error: 'Chat not found' });
+    }
+    
+    res.json({ 
+      success: true, 
+      chat: {
+        id: chat._id,
+        title: chat.title,
+        messages: chat.messages,
+        createdAt: chat.createdAt,
+        updatedAt: chat.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error('Get AI chat error:', error);
+    res.status(500).json({ error: 'Failed to get chat' });
+  }
+});
+
+// AI Chat History - Create new chat
+app.post('/api/ai/chats', async (req, res) => {
+  try {
+    const { userId, title, messages } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    await connectDB();
+    
+    const chat = new AIChat({
+      userId,
+      title: title || 'New Chat',
+      messages: messages || []
+    });
+    
+    await chat.save();
+    
+    res.json({ 
+      success: true, 
+      chat: {
+        id: chat._id,
+        title: chat.title,
+        messages: chat.messages,
+        createdAt: chat.createdAt,
+        updatedAt: chat.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error('Create AI chat error:', error);
+    res.status(500).json({ error: 'Failed to create chat' });
+  }
+});
+
+// AI Chat History - Update chat (add/update messages)
+app.put('/api/ai/chats/:chatId', async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const { userId, title, messages } = req.body;
+    
+    await connectDB();
+    
+    const updateData = {};
+    if (title) updateData.title = title;
+    if (messages) updateData.messages = messages;
+    
+    const chat = await AIChat.findOneAndUpdate(
+      { _id: chatId, userId },
+      { $set: updateData },
+      { new: true }
+    );
+    
+    if (!chat) {
+      return res.status(404).json({ error: 'Chat not found' });
+    }
+    
+    res.json({ 
+      success: true, 
+      chat: {
+        id: chat._id,
+        title: chat.title,
+        messages: chat.messages,
+        createdAt: chat.createdAt,
+        updatedAt: chat.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error('Update AI chat error:', error);
+    res.status(500).json({ error: 'Failed to update chat' });
+  }
+});
+
+// AI Chat History - Delete chat
+app.delete('/api/ai/chats/:userId/:chatId', async (req, res) => {
+  try {
+    const { userId, chatId } = req.params;
+    
+    await connectDB();
+    
+    const chat = await AIChat.findOneAndDelete({ _id: chatId, userId });
+    
+    if (!chat) {
+      return res.status(404).json({ error: 'Chat not found' });
+    }
+    
+    res.json({ success: true, message: 'Chat deleted successfully' });
+  } catch (error) {
+    console.error('Delete AI chat error:', error);
+    res.status(500).json({ error: 'Failed to delete chat' });
+  }
+});
+
+// AI Gist - Get all gists (admin only)
+app.get('/api/ai-gists', async (req, res) => {
+  try {
+    const { admin } = req.query;
+    
+    // Only allow admin to access
+    if (admin !== 'true') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    await connectDB();
+    
+    const gists = await AIGist.find({})
+      .sort({ createdAt: -1 })
+      .limit(50);
+    
+    res.json({ 
+      success: true, 
+      gists: gists.map(g => ({
+        id: g._id,
+        type: g.type,
+        title: g.title,
+        content: g.content,
+        author: g.author,
+        priority: g.priority,
+        status: g.status,
+        createdAt: g.createdAt
+      }))
+    });
+  } catch (error) {
+    console.error('Get AI gists error:', error);
+    res.status(500).json({ error: 'Failed to get AI gists' });
+  }
+});
+
+// AI Gist - Create new gist (admin posts or AI posts complaints)
+app.post('/api/ai-gists', async (req, res) => {
+  try {
+    const { type, title, content, author, authorId, priority, isPublic } = req.body;
+    
+    if (!type || !title || !content || !author) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    await connectDB();
+    
+    const gist = new AIGist({
+      type,
+      title,
+      content,
+      author,
+      authorId,
+      priority: priority || 'medium',
+      isPublic: isPublic !== undefined ? isPublic : true
+    });
+    
+    await gist.save();
+    
+    res.json({ 
+      success: true, 
+      gist: {
+        id: gist._id,
+        type: gist.type,
+        title: gist.title,
+        content: gist.content,
+        author: gist.author,
+        priority: gist.priority,
+        status: gist.status,
+        createdAt: gist.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Create AI gist error:', error);
+    res.status(500).json({ error: 'Failed to create AI gist' });
+  }
+});
+
+// AI Gist - Update gist status (admin only)
+app.put('/api/ai-gists/:gistId', async (req, res) => {
+  try {
+    const { gistId } = req.params;
+    const { status, priority, isPublic } = req.body;
+    
+    await connectDB();
+    
+    const updateData = {};
+    if (status) updateData.status = status;
+    if (priority) updateData.priority = priority;
+    if (isPublic !== undefined) updateData.isPublic = isPublic;
+    
+    const gist = await AIGist.findByIdAndUpdate(
+      gistId,
+      { $set: updateData },
+      { new: true }
+    );
+    
+    if (!gist) {
+      return res.status(404).json({ error: 'Gist not found' });
+    }
+    
+    res.json({ 
+      success: true, 
+      gist: {
+        id: gist._id,
+        type: gist.type,
+        title: gist.title,
+        content: gist.content,
+        author: gist.author,
+        priority: gist.priority,
+        status: gist.status,
+        createdAt: gist.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Update AI gist error:', error);
+    res.status(500).json({ error: 'Failed to update AI gist' });
+  }
+});
+
+// AI Gist - Delete gist (admin only)
+app.delete('/api/ai-gists/:gistId', async (req, res) => {
+  try {
+    const { gistId } = req.params;
+    
+    await connectDB();
+    
+    const gist = await AIGist.findByIdAndDelete(gistId);
+    
+    if (!gist) {
+      return res.status(404).json({ error: 'Gist not found' });
+    }
+    
+    res.json({ success: true, message: 'AI Gist deleted successfully' });
+  } catch (error) {
+    console.error('Delete AI gist error:', error);
+    res.status(500).json({ error: 'Failed to delete AI gist' });
+  }
+});
+
+// Catch-all for debugging
+app.all('*', (req, res) => {
+  console.log(`404 - ${req.method} ${req.url}`);
+  res.status(404).json({ error: 'Not found', method: req.method, url: req.url });
 });
 
 // Only start server locally (not on Vercel)

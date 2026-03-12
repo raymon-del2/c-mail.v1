@@ -5,7 +5,7 @@ import Button from '../components/Button';
 import './Signup.css';
 import './SignupMobile.css';
 
-const API_URL = '/api';
+const API_URL = 'http://localhost:5000/api';
 
 export default function Signup() {
   const navigate = useNavigate();

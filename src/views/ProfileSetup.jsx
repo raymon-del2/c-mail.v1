@@ -4,7 +4,7 @@ import { Upload, Check, Loader2 } from 'lucide-react';
 import Button from '../components/Button';
 import './ProfileSetup.css';
 
-const API_BASE_URL = '';
+const API_BASE_URL = 'http://localhost:5000';
 
 export default function ProfileSetup() {
   const navigate = useNavigate();
@@ -47,7 +47,7 @@ export default function ProfileSetup() {
     setError('');
 
     try {
-      const response = await fetch('/api/profile', {
+      const response = await fetch(`${API_BASE_URL}/api/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -55,6 +55,14 @@ export default function ProfileSetup() {
           profileUrl: profileUrl || ''
         })
       });
+
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Non-JSON response:', text);
+        throw new Error(`Server returned non-JSON: ${text.substring(0, 100)}`);
+      }
 
       const data = await response.json();
 
