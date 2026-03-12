@@ -736,6 +736,143 @@ const apiKey = 'c-mail_xxxxxxxxxxxxxxxx'; // From /devapi
                 </div>
               </div>
 
+              <div id="auth-service" className="apidocs-subsection">
+                <h2 className="apidocs-heading">Authentication as a Service</h2>
+                <p className="apidocs-text">
+                  C-mail provides Authentication as a Service for third-party developers. Use our OTP and Magic Link 
+                  flows to verify users without building your own email infrastructure. Perfect for SSO, passwordless login, 
+                  and account verification.
+                </p>
+
+                <div className="apidocs-info-box">
+                  <strong>Base URL:</strong> <code>https://c-mail.vercel.app/api/dev/auth</code><br/>
+                  <strong>Auth Required:</strong> API Key in header <code>X-API-Key</code>
+                </div>
+
+                <h3 className="apidocs-subheading">OTP Flow</h3>
+                
+                <div className="apidocs-endpoint">
+                  <div className="apidocs-endpoint-header">
+                    <span className="apidocs-method post">POST</span>
+                    <code className="apidocs-endpoint-url">/api/dev/auth/send-otp</code>
+                  </div>
+                  <p className="apidocs-endpoint-desc">Send 6-digit OTP to user's email</p>
+                  <CodeBlock code={`// Request
+POST /api/dev/auth/send-otp
+Headers: { "X-API-Key": "your_api_key" }
+Body: {
+  "email": "user@example.com",
+  "appName": "Your App Name"
+}
+
+// Response
+{
+  "success": true,
+  "message": "OTP sent successfully",
+  "expiresIn": "10 minutes"
+}`} />
+                </div>
+
+                <div className="apidocs-endpoint">
+                  <div className="apidocs-endpoint-header">
+                    <span className="apidocs-method post">POST</span>
+                    <code className="apidocs-endpoint-url">/api/dev/auth/verify-otp</code>
+                  </div>
+                  <p className="apidocs-endpoint-desc">Verify the 6-digit OTP code</p>
+                  <CodeBlock code={`// Request
+POST /api/dev/auth/verify-otp
+Headers: { "X-API-Key": "your_api_key" }
+Body: {
+  "email": "user@example.com",
+  "code": "123456"
+}
+
+// Response - Success
+{
+  "success": true,
+  "verified": true,
+  "user": {
+    "email": "user@example.com",
+    "verified": true
+  }
+}
+
+// Response - Failed
+{
+  "success": false,
+  "verified": false,
+  "message": "Invalid or expired code"
+}`} />
+                </div>
+
+                <h3 className="apidocs-subheading">Magic Link Flow</h3>
+                
+                <div className="apidocs-endpoint">
+                  <div className="apidocs-endpoint-header">
+                    <span className="apidocs-method post">POST</span>
+                    <code className="apidocs-endpoint-url">/api/dev/auth/send-magic-link</code>
+                  </div>
+                  <p className="apidocs-endpoint-desc">Send clickable magic link for one-click verification</p>
+                  <CodeBlock code={`// Request
+POST /api/dev/auth/send-magic-link
+Headers: { "X-API-Key": "your_api_key" }
+Body: {
+  "email": "user@example.com",
+  "appName": "Your App Name",
+  "redirectUrl": "https://yourapp.com/callback"
+}
+
+// Response
+{
+  "success": true,
+  "message": "Magic link sent successfully",
+  "expiresIn": "15 minutes"
+}`} />
+                </div>
+
+                <div className="apidocs-endpoint">
+                  <div className="apidocs-endpoint-header">
+                    <span className="apidocs-method post">POST</span>
+                    <code className="apidocs-endpoint-url">/api/dev/auth/verify-link</code>
+                  </div>
+                  <p className="apidocs-endpoint-desc">Verify magic link token (called by your frontend after user clicks link)</p>
+                  <CodeBlock code={`// Request
+POST /api/dev/auth/verify-link
+Headers: { "X-API-Key": "your_api_key" }
+Body: {
+  "token": "abc123xyz",
+  "appId": "your_app_id"
+}
+
+// Response - Success
+{
+  "success": true,
+  "verified": true,
+  "redirectUrl": "https://yourapp.com/callback?status=success",
+  "user": {
+    "email": "user@example.com",
+    "verified": true
+  }
+}
+
+// Response - Failed
+{
+  "success": false,
+  "verified": false,
+  "message": "Invalid or expired link"
+}`} />
+                </div>
+
+                <h3 className="apidocs-subheading">Email Templates</h3>
+                <p className="apidocs-text">
+                  C-mail automatically sends branded emails using your app name:
+                </p>
+                <ul className="apidocs-list">
+                  <li><strong>OTP Email:</strong> Contains 6-digit code, expires in 10 minutes, dark mode design</li>
+                  <li><strong>Magic Link Email:</strong> Contains clickable button, expires in 15 minutes, redirects back to your app</li>
+                </ul>
+              </div>
+
               <div id="webhooks" className="apidocs-subsection">
                 <h2 className="apidocs-heading">Webhooks</h2>
                 <p className="apidocs-text">
