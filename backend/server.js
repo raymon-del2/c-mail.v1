@@ -279,6 +279,7 @@ app.get('/api/profile', (req, res) => {
 
 app.get('/api/users/:id', async (req, res) => {
   try {
+    await connectDB();
     const user = await User.findById(req.params.id).select('-password');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -291,6 +292,7 @@ app.get('/api/users/:id', async (req, res) => {
 
 app.get('/api/users/lookup/:username', async (req, res) => {
   try {
+    await connectDB();
     const { username } = req.params;
     const user = await User.findOne({ username }).select('-password');
     if (!user) {
@@ -306,6 +308,8 @@ app.get('/api/users/lookup/:username', async (req, res) => {
 app.post('/api/emails/send', async (req, res) => {
   try {
     const { senderId, recipientId, subject, body, links } = req.body;
+    
+    await connectDB();
     
     const sender = await User.findById(senderId);
     const recipient = await User.findById(recipientId);
@@ -363,6 +367,8 @@ app.get('/api/emails/:userId', async (req, res) => {
     const { userId } = req.params;
     const { folder = 'inbox' } = req.query;
     
+    await connectDB();
+    
     let emails;
     if (folder === 'inbox') {
       emails = await Email.find({ recipient: userId, folder: 'inbox' })
@@ -389,6 +395,8 @@ app.get('/api/emails/:userId', async (req, res) => {
 app.post('/api/emails/draft', async (req, res) => {
   try {
     const { senderId, recipientId, recipientUsername, subject, body, links, draftId } = req.body;
+    
+    await connectDB();
     
     let draft;
     if (draftId) {
@@ -431,8 +439,11 @@ app.post('/api/emails/draft', async (req, res) => {
 app.delete('/api/emails/:emailId', async (req, res) => {
   try {
     const { emailId } = req.params;
+    
+    await connectDB();
+    
     await Email.findByIdAndDelete(emailId);
-    res.json({ success: true, message: 'Email deleted' });
+    res.json({ success: true });
   } catch (error) {
     console.error('Delete email error:', error);
     res.status(500).json({ error: 'Failed to delete email' });
@@ -443,15 +454,23 @@ app.delete('/api/emails/:emailId', async (req, res) => {
 app.patch('/api/emails/:emailId/read', async (req, res) => {
   try {
     const { emailId } = req.params;
+    
+    await connectDB();
+    
     const email = await Email.findByIdAndUpdate(
       emailId,
       { read: true },
       { new: true }
     );
-    res.json({ success: true, email });
+    
+    if (!email) {
+      return res.status(404).json({ error: 'Email not found' });
+    }
+    
+    res.json(email);
   } catch (error) {
     console.error('Mark read error:', error);
-    res.status(500).json({ error: 'Failed to mark as read' });
+    res.status(500).json({ error: 'Failed to mark email as read' });
   }
 });
 
@@ -461,6 +480,8 @@ app.post('/api/emails/reply', async (req, res) => {
     const { senderId, recipientId, parentEmailId, subject, body, links, threadId } = req.body;
     
     console.log('Reply request:', { senderId, recipientId, parentEmailId, threadId });
+    
+    await connectDB();
     
     const sender = await User.findById(senderId);
     const recipient = await User.findById(recipientId);
@@ -542,6 +563,9 @@ app.post('/api/emails/reply', async (req, res) => {
 app.get('/api/devapi/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+    
+    await connectDB();
+    
     const apiKeyDoc = await ApiKey.findOne({ userId });
     
     if (!apiKeyDoc) {
@@ -562,6 +586,8 @@ app.get('/api/devapi/:userId', async (req, res) => {
 app.post('/api/devapi/generate-key', async (req, res) => {
   try {
     const { userId } = req.body;
+    
+    await connectDB();
     
     // Generate random API key
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -586,6 +612,9 @@ app.post('/api/devapi/generate-key', async (req, res) => {
 app.delete('/api/devapi/revoke-key/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+    
+    await connectDB();
+    
     await ApiKey.findOneAndDelete({ userId });
     res.json({ success: true });
   } catch (error) {
@@ -598,6 +627,8 @@ app.delete('/api/devapi/revoke-key/:userId', async (req, res) => {
 app.post('/api/devapi/add-url', async (req, res) => {
   try {
     const { userId, url } = req.body;
+    
+    await connectDB();
     
     const apiKeyDoc = await ApiKey.findOneAndUpdate(
       { userId },
@@ -618,6 +649,8 @@ app.delete('/api/devapi/remove-url/:userId', async (req, res) => {
     const { userId } = req.params;
     const { url } = req.query;
     
+    await connectDB();
+    
     const apiKeyDoc = await ApiKey.findOneAndUpdate(
       { userId },
       { $pull: { redirectUrls: url } },
@@ -635,6 +668,9 @@ app.delete('/api/devapi/remove-url/:userId', async (req, res) => {
 app.get('/api/emails/thread/:emailId', async (req, res) => {
   try {
     const { emailId } = req.params;
+    
+    await connectDB();
+    
     const email = await Email.findById(emailId);
     
     if (!email) {
@@ -823,6 +859,9 @@ app.get('/api/auth/check-consent', async (req, res) => {
 app.get('/api/user/connected-apps/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+    
+    await connectDB();
+    
     const consents = userConsents.get(userId) || [];
     
     // Get app details from ApiKey collection
@@ -849,6 +888,8 @@ app.get('/api/user/connected-apps/:userId', async (req, res) => {
 app.post('/api/user/revoke', async (req, res) => {
   try {
     const { userId, clientId } = req.body;
+    
+    await connectDB();
     
     const consents = userConsents.get(userId) || [];
     const filtered = consents.filter(c => c.clientId !== clientId);
@@ -1163,6 +1204,7 @@ const adminNews = new Map(); // userId (admin) -> Array of news items
 // Admin verification helper - checks if user is playraofficial (admin)
 const isAdminUser = async (userId) => {
   try {
+    await connectDB();
     const user = await User.findById(userId).select('email username isAdmin');
     if (!user) return false;
     return user.username === 'playraofficial' || 
@@ -1576,6 +1618,8 @@ app.get('/api/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     
+    await connectDB();
+    
     const user = await User.findById(userId).select('-password');
     
     if (!user) {
@@ -1621,25 +1665,62 @@ app.patch('/api/user/profile', async (req, res) => {
     if (number !== undefined) updateFields.number = number;
     if (profileUrl !== undefined) updateFields.profileUrl = profileUrl;
     
-    // Find and update user
-    const updatedUser = await User.findByIdAndUpdate(
+    const user = await User.findByIdAndUpdate(
       userId,
-      updateFields,
+      { $set: updateFields },
       { new: true, runValidators: true }
     );
     
-    if (!updatedUser) {
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    // Return updated user data without password
-    const userResponse = updatedUser.toObject();
-    delete userResponse.password;
-    
-    res.json(userResponse);
+    res.json({ success: true, user });
   } catch (error) {
-    console.error('Update profile error:', error);
-    res.status(500).json({ error: 'Failed to update profile' });
+    console.error('Profile update error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT endpoint for profile (used by ProfileSetup.jsx)
+app.put('/api/user/profile', async (req, res) => {
+  try {
+    // Check if MONGODB_URI is set
+    if (!process.env.MONGODB_URI) {
+      return res.status(500).json({ 
+        error: 'Database not configured',
+        details: 'MONGODB_URI environment variable is not set'
+      });
+    }
+    
+    // Lazy connect to MongoDB with timeout
+    await Promise.race([
+      connectDB(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('MongoDB connection timeout')), 6000)
+      )
+    ]);
+    
+    const { userId, profileUrl } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $set: { profileUrl: profileUrl || '' } },
+      { new: true, runValidators: true }
+    );
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({ success: true, user });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
