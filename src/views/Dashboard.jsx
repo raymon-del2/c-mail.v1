@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { Mail, Inbox, Send, File, Settings as SettingsIcon, LogOut, Search, Menu, ChevronLeft, X, Edit2, ArrowRight, CheckCircle2, Copy, Check, AlertTriangle, RotateCcw, Trash2, Code2, Globe, Lock, CornerDownRight, Eye, EyeOff, Terminal, Plus, Shield, Megaphone, Phone, Sparkles, Send as SendIcon, History, MessageSquare, FolderPlus } from 'lucide-react';
+import { Mail, Inbox, Send, File, Settings as SettingsIcon, LogOut, Search, Menu, ChevronLeft, ChevronDown, X, Edit2, ArrowRight, CheckCircle2, Copy, Check, AlertTriangle, RotateCcw, Trash2, Code2, Globe, Lock, CornerDownRight, Eye, EyeOff, Terminal, Plus, Shield, Megaphone, Phone, Sparkles, Send as SendIcon, History, MessageSquare, FolderPlus } from 'lucide-react';
 import './Dashboard.css';
 import './DashboardMobile.css';
 import './Compose.css';
@@ -64,41 +64,6 @@ export default function Dashboard() {
       }, 400);
     }
     setShowAccountSwitcher(!showAccountSwitcher);
-  };
-  
-  // Switch account function
-  const switchAccount = (accountEmail) => {
-    const stored = localStorage.getItem('cmail_accounts');
-    if (!stored) return;
-    
-    const data = JSON.parse(stored);
-    const account = data.accounts.find(acc => acc.email === accountEmail);
-    
-    if (account) {
-      // Update active account
-      data.activeAccount = accountEmail;
-      localStorage.setItem('cmail_accounts', JSON.stringify(data));
-      
-      // Update current user
-      const userData = {
-        email: account.email,
-        username: account.username,
-        firstName: account.name?.split(' ')[0] || '',
-        secondName: account.name?.split(' ')[1] || '',
-        profileUrl: account.profileUrl
-      };
-      localStorage.setItem('cmail_user', JSON.stringify(userData));
-      
-      // Navigate to new account's inbox
-      window.location.href = `/${account.username}/inbox`;
-    }
-    
-    setShowAccountSwitcher(false);
-  };
-  
-  // Add new account
-  const addNewAccount = () => {
-    navigate('/login');
   };
   
   // Sign out all accounts
@@ -714,15 +679,16 @@ export default function Dashboard() {
 
   // Refresh user data from database
   const refreshUserData = useCallback(async () => {
-    if (!user?._id) return;
+    const currentUser = JSON.parse(localStorage.getItem('cmail_user') || '{}');
+    if (!currentUser?._id) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/user/${user._id}`);
+      const response = await fetch(`${API_URL}/api/user/${currentUser._id}`);
       if (response.ok) {
         const updatedUser = await response.json();
         
         // Prevent infinite loop by only updating if data actually changed
-        if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
+        if (JSON.stringify(currentUser) !== JSON.stringify(updatedUser)) {
           localStorage.setItem('cmail_user', JSON.stringify(updatedUser));
           // Update React state to trigger re-render
           setUser(updatedUser);
@@ -731,7 +697,7 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Failed to refresh user data:', error);
     }
-  }, [user]);
+  }, []);
 
   // Load Dev API credentials and check verification status on mount
   useEffect(() => {
@@ -765,7 +731,7 @@ export default function Dashboard() {
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [user?._id, refreshUserData]);
+  }, [refreshUserData]);
 
   // Load connected apps when folder changes
   useEffect(() => {
@@ -827,7 +793,7 @@ export default function Dashboard() {
     }
     
     try {
-      const response = await fetch(`http://localhost:5000/api/news/${newsId}`, {
+      const response = await fetch(`${API_URL}/api/news/${newsId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -854,7 +820,7 @@ export default function Dashboard() {
 
   const deleteNews = async (newsId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/news/${newsId}`, {
+      const response = await fetch(`${API_URL}/api/news/${newsId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adminId: user._id })
@@ -1023,7 +989,7 @@ export default function Dashboard() {
         
         case 'POST_COMPLAINT': {
           if (!user || !user._id) return '❌ User not logged in';
-          const res = await fetch('http://localhost:5000/api/ai-gists', {
+          const res = await fetch(`${API_URL}/api/ai-gists`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1136,7 +1102,7 @@ export default function Dashboard() {
 
   const deleteChat = async (chatId) => {
     try {
-      await fetch(`http://localhost:5000/api/ai/chats/${user._id}/${chatId}`, {
+      await fetch(`${API_URL}/api/ai/chats/${user._id}/${chatId}`, {
         method: 'DELETE'
       });
       
@@ -1202,7 +1168,7 @@ export default function Dashboard() {
     setAiLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/ai/chat', {
+      const response = await fetch(`${API_URL}/api/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1310,7 +1276,7 @@ export default function Dashboard() {
   // Fetch all news for all users (global news feed)
   const fetchAllNews = useCallback(async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/news');
+      const response = await fetch(`${API_URL}/api/news`);
       if (response.ok) {
         const data = await response.json();
         setAllNews(data);
@@ -1333,7 +1299,7 @@ export default function Dashboard() {
     if (!user?._id) return;
     setAiGistLoading(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/ai-gists?admin=${isAdmin}`);
+      const res = await fetch(`${API_URL}/api/ai-gists?admin=${isAdmin}`);
       const data = await res.json();
       if (data.success) {
         setAiGists(data.gists);
@@ -1357,7 +1323,7 @@ export default function Dashboard() {
     if (!aiGistInput.title.trim() || !aiGistInput.content.trim()) return;
     
     try {
-      const res = await fetch('http://localhost:5000/api/ai-gists', {
+      const res = await fetch('${API_URL}/api/ai-gists', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1380,7 +1346,7 @@ export default function Dashboard() {
   // Update AI Gist status
   const updateAiGistStatus = async (gistId, status) => {
     try {
-      await fetch(`http://localhost:5000/api/ai-gists/${gistId}`, {
+      await fetch(`${API_URL}/api/ai-gists/${gistId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
@@ -1394,7 +1360,7 @@ export default function Dashboard() {
   // Delete AI Gist
   const deleteAiGist = async (gistId) => {
     try {
-      await fetch(`http://localhost:5000/api/ai-gists/${gistId}`, {
+      await fetch(`${API_URL}/api/ai-gists/${gistId}`, {
         method: 'DELETE'
       });
       fetchAiGists();
@@ -1405,7 +1371,7 @@ export default function Dashboard() {
 
   const generateApiKey = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/devapi/generate-key', {
+      const response = await fetch(`${API_URL}/api/devapi/generate-key`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user._id })
@@ -1436,7 +1402,7 @@ export default function Dashboard() {
 
   const revokeApiKey = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/devapi/revoke-key/${user._id}`, {
+      const response = await fetch(`${API_URL}/api/devapi/revoke-key/${user._id}`, {
         method: 'DELETE'
       });
       
@@ -1468,7 +1434,7 @@ export default function Dashboard() {
     }
     
     try {
-      const response = await fetch('http://localhost:5000/api/devapi/add-url', {
+      const response = await fetch(`${API_URL}/api/devapi/add-url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user._id, url: val })
@@ -1488,7 +1454,7 @@ export default function Dashboard() {
 
   const removeRedirectUrl = async (url) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/devapi/remove-url/${user._id}?url=${encodeURIComponent(url)}`, {
+      const response = await fetch(`${API_URL}/api/devapi/remove-url/${user._id}?url=${encodeURIComponent(url)}`, {
         method: 'DELETE'
       });
       
@@ -1505,7 +1471,7 @@ export default function Dashboard() {
     if (!composeTo.trim() || !composeBody.trim() || !recipientSearch) return;
 
     try {
-      const response = await fetch('http://localhost:5000/api/emails/send', {
+      const response = await fetch(`${API_URL}/api/emails/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1552,7 +1518,7 @@ export default function Dashboard() {
     setRecipientError('');
     
     try {
-      const response = await fetch(`http://localhost:5000/api/users/lookup/${username}`);
+      const response = await fetch(`${API_URL}/api/users/lookup/${username}`);
       const data = await response.json();
       
       if (!response.ok) {
@@ -1598,7 +1564,7 @@ export default function Dashboard() {
   // Reply handlers
   const fetchEmailThread = async (emailId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/emails/thread/${emailId}`);
+      const response = await fetch(`${API_URL}/api/emails/thread/${emailId}`);
       if (response.ok) {
         const data = await response.json();
         setEmailThread(data);
@@ -1618,7 +1584,7 @@ export default function Dashboard() {
   // Mark email as read
   const markEmailAsRead = async (emailId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/emails/${emailId}/read`, {
+      const response = await fetch(`${API_URL}/api/emails/${emailId}/read`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -1653,7 +1619,7 @@ export default function Dashboard() {
         isMeSender
       });
       
-      const response = await fetch('http://localhost:5000/api/emails/reply', {
+      const response = await fetch(`${API_URL}/api/emails/reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2027,7 +1993,7 @@ export default function Dashboard() {
                     <div
                       key={account.email}
                       className="cmail-account-item"
-                      onClick={() => switchAccount(account.email)}
+                      style={{ opacity: 0.5, cursor: 'not-allowed' }}
                     >
                       <div className="cmail-account-avatar">
                         {account.profileUrl ? (
@@ -2039,6 +2005,7 @@ export default function Dashboard() {
                       <div className="cmail-account-details">
                         <span className="cmail-account-name">{account.name || account.username}</span>
                         <span className="cmail-account-email">{account.email}</span>
+                        <span style={{ fontSize: '10px', color: '#888' }}>Coming Soon</span>
                       </div>
                     </div>
                   ))
@@ -2050,10 +2017,11 @@ export default function Dashboard() {
               <div className="cmail-account-divider" />
               
               <div className="cmail-account-actions">
-                <button className="cmail-account-action-btn add" onClick={addNewAccount}>
+                <div className="cmail-account-action-btn coming-soon" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
                   <Plus size={14} />
                   <span>Add another account</span>
-                </button>
+                  <span style={{ fontSize: '10px', marginLeft: '8px', color: '#888' }}>Coming Soon</span>
+                </div>
                 <button className="cmail-account-action-btn sign-out" onClick={signOutAll}>
                   <LogOut size={14} />
                   <span>Sign out all accounts</span>
@@ -3440,7 +3408,7 @@ curl -X POST https://c-mail.vercel.app/api/v1/send \\
                   if (emailToDelete) {
                     try {
                       // Delete from database
-                      const response = await fetch(`http://localhost:5000/api/emails/${emailToDelete.id}`, {
+                      const response = await fetch(`${API_URL}/api/emails/${emailToDelete.id}`, {
                         method: 'DELETE'
                       });
                       

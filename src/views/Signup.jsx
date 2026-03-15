@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import './Signup.css';
@@ -9,6 +9,9 @@ import { API_BASE } from '../config/api';
 
 export default function Signup() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('returnTo');
+  
   const [formData, setFormData] = useState({
     firstName: '',
     secondName: '',
@@ -87,7 +90,11 @@ export default function Signup() {
       localStorage.setItem('cmail_accounts', JSON.stringify(accountsData));
       localStorage.setItem('cmail_user', JSON.stringify(data.user)); // Keep for backward compatibility
       
-      if (!isLogin) {
+      // Handle redirect after successful auth
+      if (returnTo) {
+        // Redirect back to OAuth authorize page or other return URL
+        navigate(returnTo);
+      } else if (!isLogin) {
         navigate('/setup-profile');
       } else {
         navigate(`/${formData.username}`);

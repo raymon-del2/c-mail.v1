@@ -55,7 +55,7 @@ export default function SplashScreen() {
         
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 2000);
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
           
           const response = await fetch(`${API_URL}/api/auth/me`, {
             headers: { 'Authorization': `Bearer ${account.token}` },
@@ -66,6 +66,7 @@ export default function SplashScreen() {
           
           if (response.ok) {
             const userData = await response.json();
+            localStorage.setItem('cmail_user', JSON.stringify(userData));
             clearTimeout(timeoutRef.current);
             navigate(`/${userData.username}/inbox`, { replace: true });
             return;
@@ -76,6 +77,17 @@ export default function SplashScreen() {
         
         clearTimeout(timeoutRef.current);
         if (account.username) {
+          // Set user data from account for fallback case
+          const userData = {
+            _id: account.userId,
+            username: account.username,
+            email: account.email,
+            firstName: account.name?.split(' ')[0] || '',
+            secondName: account.name?.split(' ')[1] || '',
+            profileUrl: account.profileUrl,
+            token: account.token
+          };
+          localStorage.setItem('cmail_user', JSON.stringify(userData));
           navigate(`/${account.username}/inbox`, { replace: true });
         } else {
           navigate('/login', { replace: true });

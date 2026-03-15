@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Upload, Check, Loader2 } from 'lucide-react';
 import Button from '../components/Button';
 import './ProfileSetup.css';
@@ -7,6 +7,8 @@ import { API_URL } from '../config/api';
 
 export default function ProfileSetup() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('returnTo');
   const fileInputRef = useRef(null);
   
   const [user] = useState(() => {
@@ -73,7 +75,11 @@ export default function ProfileSetup() {
       setIsSuccess(true);
       
       setTimeout(() => {
-        navigate(`/${user.username}`);
+        if (returnTo) {
+          navigate(returnTo);
+        } else {
+          navigate(`/${user.username}`);
+        }
       }, 2000);
     } catch (err) {
       setError(err.message);
@@ -83,7 +89,11 @@ export default function ProfileSetup() {
   };
 
   const handleSkip = () => {
-    navigate(`/${user.username}`);
+    if (returnTo) {
+      navigate(returnTo);
+    } else {
+      navigate(`/${user.username}`);
+    }
   };
 
   if (!user) {

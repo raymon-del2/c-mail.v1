@@ -9,6 +9,7 @@ import ApiKey from './models/ApiKey.js';
 import AIChat from './models/AIChat.js';
 import AIGist from './models/AIGist.js';
 import Verification from './models/Verification.js';
+import RefreshToken from './models/RefreshToken.js';
 import { sendEmailDirect } from './utils/email.js';
 import Groq from 'groq-sdk';
 
@@ -42,10 +43,12 @@ async function connectDB() {
   isConnecting = true;
   try {
     await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 5000,
-      socketTimeoutMS: 5000,
-      maxPoolSize: 1
+      serverSelectionTimeoutMS: 30000,
+      connectTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      maxPoolSize: 10,
+      retryWrites: true,
+      w: 'majority'
     });
     console.log('✅ Connected to MongoDB');
   } catch (err) {
@@ -815,6 +818,14 @@ app.post('/api/v1/verify', async (req, res) => {
     // Mark code as used
     codeData.used = true;
     
+    // Generate refresh token (long-lived, for getting new access tokens)
+    const refreshTokenString = 'cmail_refresh_' + crypto.randomBytes(32).toString('hex');
+    await RefreshToken.create({
+      userId: user._id,
+      clientId: clientId,
+      token: refreshTokenString
+    });
+    
     // Generate JWT payload (simplified - no actual JWT signing for now)
     const token = {
       iss: 'https://c-mail.vercel.app',
@@ -829,7 +840,8 @@ app.post('/api/v1/verify', async (req, res) => {
     };
     
     res.json({
-      access_token: 'cmail_token_' + Math.random().toString(36).substring(2),
+      access_token: 'cmail_token_' + crypto.randomBytes(16).toString('hex'),
+      refresh_token: refreshTokenString,
       token_type: 'Bearer',
       expires_in: 3600,
       id_token: token
@@ -837,6 +849,65 @@ app.post('/api/v1/verify', async (req, res) => {
   } catch (error) {
     console.error('Verify token error:', error);
     res.status(500).json({ error: 'Failed to verify code' });
+  }
+});
+
+// Refresh access token using refresh token
+app.post('/api/v1/refresh', async (req, res) => {
+  try {
+    const { refresh_token } = req.body;
+    
+    if (!refresh_token) {
+      return res.status(400).json({ error: 'refresh_token is required' });
+    }
+    
+    await connectDB();
+    
+    // Find valid refresh token
+    const tokenDoc = await RefreshToken.findOne({ 
+      token: refresh_token, 
+      isRevoked: false 
+    });
+    
+    if (!tokenDoc) {
+      return res.status(401).json({ error: 'Invalid or expired refresh token' });
+    }
+    
+    // Update last used
+    tokenDoc.lastUsed = new Date();
+    await tokenDoc.save();
+    
+    // Get user data
+    const user = await User.findById(tokenDoc.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Generate new access token
+    const newAccessToken = 'cmail_token_' + crypto.randomBytes(16).toString('hex');
+    
+    // Generate new JWT payload
+    const token = {
+      iss: 'https://c-mail.vercel.app',
+      sub: user._id.toString(),
+      aud: tokenDoc.clientId,
+      name: `${user.firstName} ${user.secondName}`,
+      email: user.email,
+      picture: user.profileUrl || '',
+      username: user.username,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 3600 // 1 hour
+    };
+    
+    res.json({
+      access_token: newAccessToken,
+      token_type: 'Bearer',
+      expires_in: 3600,
+      id_token: token
+    });
+  } catch (error) {
+    console.error('Refresh token error:', error);
+    res.status(500).json({ error: 'Failed to refresh token' });
   }
 });
 
@@ -891,11 +962,15 @@ app.post('/api/user/revoke', async (req, res) => {
     
     await connectDB();
     
+    // Remove from in-memory consents
     const consents = userConsents.get(userId) || [];
     const filtered = consents.filter(c => c.clientId !== clientId);
     userConsents.set(userId, filtered);
     
-    res.json({ success: true });
+    // Revoke all refresh tokens for this user-client pair
+    await RefreshToken.revokeAllForUserClient(userId, clientId, 'User revoked app access');
+    
+    res.json({ success: true, message: 'App access revoked successfully' });
   } catch (error) {
     console.error('Revoke access error:', error);
     res.status(500).json({ error: 'Failed to revoke access' });

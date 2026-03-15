@@ -264,7 +264,8 @@ export default function ApiDocs() {
       items: [
         { id: 'authorization', title: 'Authorization Flow' },
         { id: 'token-exchange', title: 'Token Exchange' },
-        { id: 'user-info', title: 'User Information' }
+        { id: 'user-info', title: 'User Information' },
+        { id: 'refresh-tokens', title: 'Refresh Tokens (Auto-login)' }
       ]
     },
     {
@@ -341,7 +342,7 @@ const params = new URLSearchParams({
 
 window.location.href = \`https://c-mail.vercel.app/auth/authorize?\${params}\`;`,
 
-    token: `// Exchange code for access token
+    token: `// Exchange code for access token (server-side only)
 const response = await fetch('https://c-mail.vercel.app/api/v1/verify', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
@@ -351,7 +352,10 @@ const response = await fetch('https://c-mail.vercel.app/api/v1/verify', {
   })
 });
 
-const { access_token, id_token } = await response.json();`,
+const { access_token, refresh_token, id_token } = await response.json();
+
+// Store refresh_token securely in your database
+// Use it later to get new access tokens without user login`,
 
     email: `// Send transactional email
 const response = await fetch('https://c-mail.vercel.app/api/v1/send', {
@@ -606,6 +610,7 @@ const apiKey = 'c-mail_xxxxxxxxxxxxxxxx'; // From /devapi
                 <CodeBlock 
                   code={`{
   "access_token": "cmail_token_abc123",
+  "refresh_token": "cmail_refresh_xyz789", // Store this securely!
   "token_type": "Bearer",
   "expires_in": 3600,
   "id_token": {
@@ -620,6 +625,50 @@ const apiKey = 'c-mail_xxxxxxxxxxxxxxxx'; // From /devapi
                   language="json"
                   title="Token Response"
                 />
+              </div>
+
+              <div id="refresh-tokens" className="apidocs-subsection">
+                <h2 className="apidocs-heading">Refresh Tokens (Auto-login)</h2>
+                <p className="apidocs-text">
+                  After the initial OAuth flow, use refresh tokens to maintain persistent login sessions. 
+                  This allows users to stay logged in across sessions without re-authenticating, just like Google OAuth.
+                </p>
+
+                <CodeBlock 
+                  code={`// Use refresh token to get new access token (server-side)
+const response = await fetch('https://c-mail.vercel.app/api/v1/refresh', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    refresh_token: 'cmail_refresh_xyz789' // From your database
+  })
+});
+
+const { access_token, id_token } = await response.json();
+
+// User is now silently re-authenticated
+// No consent screen needed!`}
+                  language="javascript"
+                  title="Refresh Token Flow"
+                />
+
+                <div className="apidocs-info-box">
+                  <Shield size={16} className="apidocs-info-icon" />
+                  <p>
+                    <strong>Security:</strong> Refresh tokens are valid for 90 days and are revoked when 
+                    the user removes your app from their Connected Apps. Store them securely in your database 
+                    (encrypted at rest).
+                  </p>
+                </div>
+
+                <h3 className="apidocs-subheading">How Google-Style Auth Works</h3>
+                <ol className="apidocs-list">
+                  <li><strong>First Login:</strong> User clicks "Sign in with C-mail", consents, you receive access_token + refresh_token</li>
+                  <li><strong>Store:</strong> Save refresh_token in your database linked to the user's account</li>
+                  <li><strong>Return Visit:</strong> Use stored refresh_token to get new access_token silently</li>
+                  <li><strong>User sees:</strong> No login prompts, auto-authenticated just like returning to Google services</li>
+                  <li><strong>Revoke:</strong> User can disconnect your app in C-mail settings → all refresh tokens revoked</li>
+                </ol>
               </div>
             </section>
 
@@ -729,10 +778,10 @@ const apiKey = 'c-mail_xxxxxxxxxxxxxxxx'; // From /devapi
 
                 <div className="apidocs-endpoint">
                   <div className="apidocs-endpoint-header">
-                    <span className="apidocs-method get">GET</span>
-                    <code className="apidocs-endpoint-url">/api/devapi/email-logs/:userId</code>
+                    <span className="apidocs-method post">POST</span>
+                    <code className="apidocs-endpoint-url">/api/v1/refresh</code>
                   </div>
-                  <p className="apidocs-endpoint-desc">Retrieve email send logs</p>
+                  <p className="apidocs-endpoint-desc">Get new access token using refresh token</p>
                 </div>
               </div>
 
