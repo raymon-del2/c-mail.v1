@@ -263,6 +263,7 @@ export default function ApiDocs() {
       icon: <Shield size={16} />,
       items: [
         { id: 'authorization', title: 'Authorization Flow' },
+        { id: 'sign-in-button', title: 'Sign in Button (Copy-Paste)' },
         { id: 'token-exchange', title: 'Token Exchange' },
         { id: 'user-info', title: 'User Information' },
         { id: 'refresh-tokens', title: 'Refresh Tokens (Auto-login)' }
@@ -585,6 +586,69 @@ const apiKey = 'c-mail_xxxxxxxxxxxxxxxx'; // From /devapi
                   After the user authorizes your app, they'll be redirected back to your 
                   specified callback URL with an authorization code.
                 </p>
+              </div>
+
+              <div id="sign-in-button" className="apidocs-subsection">
+                <h2 className="apidocs-heading">Sign in with C-mail Button</h2>
+                <p className="apidocs-text">
+                  Copy-paste this ready-to-use button into your app. It includes the C-mail logo 
+                  and follows Google's design patterns for familiarity.
+                </p>
+
+                <CodeBlock 
+                  code={`<button class="cmail-signin-btn" onclick="signInWithCMail()">
+  <svg class="cmail-icon" viewBox="0 0 24 24">
+    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" fill="#6366f1"/>
+    <polyline points="22,6 12,13 2,6" fill="none" stroke="white" stroke-width="2"/>
+    <text x="12" y="18" text-anchor="middle" fill="white" font-size="8" font-weight="bold">C</text>
+  </svg>
+  <span>Sign in with C-mail</span>
+</button>
+
+<style>
+.cmail-signin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  padding: 10px 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #3c4043;
+  cursor: pointer;
+  transition: box-shadow 0.2s, background 0.2s;
+}
+.cmail-signin-btn:hover {
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.1);
+  background: #f8f9fa;
+}
+.cmail-icon {
+  width: 18px;
+  height: 18px;
+}
+</style>
+
+<script>
+function signInWithCMail() {
+  const params = new URLSearchParams({
+    client_id: 'YOUR_API_KEY',
+    redirect_uri: 'https://your-app.com/callback',
+    response_type: 'code',
+    scope: 'profile email'
+  });
+  window.location.href = 'https://c-mail.vercel.app/auth/authorize?' + params;
+}
+</script>`}
+                  language="html"
+                  title="Copy-Paste Ready Button"
+                />
+
+                <div className="apidocs-info-box">
+                  <strong>Quick Setup:</strong> Replace <code>YOUR_API_KEY</code> with your API key from the Developer Console, and update the redirect URI to match your app.
+                </div>
               </div>
 
               <div id="token-exchange" className="apidocs-subsection">
