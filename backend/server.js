@@ -61,6 +61,13 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Helper function to generate random bytes using Web Crypto API (Edge compatible)
+const generateRandomBytes = (length) => {
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
 // Lazy MongoDB connection - don't block startup
 let isConnecting = false;
 async function connectDB() {
@@ -862,7 +869,7 @@ app.post('/api/v1/verify', async (req, res) => {
     codeData.used = true;
     
     // Generate refresh token (long-lived, for getting new access tokens)
-    const refreshTokenString = 'cmail_refresh_' + crypto.randomBytes(32).toString('hex');
+    const refreshTokenString = 'cmail_refresh_' + generateRandomBytes(32);
     console.log('🔍 Creating refresh token...');
     
     await RefreshToken.create({
@@ -886,7 +893,7 @@ app.post('/api/v1/verify', async (req, res) => {
       exp: Math.floor(Date.now() / 1000) + 3600 // 1 hour
     };
     
-    const accessToken = 'cmail_token_' + crypto.randomBytes(16).toString('hex');
+    const accessToken = 'cmail_token_' + generateRandomBytes(16);
     
     console.log('✅ Token exchange successful');
     
@@ -936,7 +943,7 @@ app.post('/api/v1/refresh', async (req, res) => {
     }
     
     // Generate new access token
-    const newAccessToken = 'cmail_token_' + crypto.randomBytes(16).toString('hex');
+    const newAccessToken = 'cmail_token_' + generateRandomBytes(16);
     
     // Generate new JWT payload
     const token = {
@@ -1122,7 +1129,7 @@ app.post('/api/dev/auth/verify-otp', async (req, res) => {
     await verification.save();
     
     // Generate auth token for developer
-    const authToken = crypto.randomBytes(32).toString('hex');
+    const authToken = generateRandomBytes(32);
     
     res.json({
       success: true,
@@ -1228,7 +1235,7 @@ app.post('/api/dev/auth/verify-link', async (req, res) => {
     await verification.save();
     
     // Generate auth code for developer
-    const authCode = crypto.randomBytes(16).toString('hex');
+    const authCode = generateRandomBytes(16);
     
     res.json({
       success: true,
