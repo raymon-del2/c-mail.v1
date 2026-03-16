@@ -27,7 +27,35 @@ if (!process.env.MONGODB_URI) {
 }
 
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174', 'https://c-mail.vercel.app', 'https://*.vercel.app'],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Allow any localhost port for development
+    if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+      return callback(null, true);
+    }
+    
+    // Allow production domains
+    const allowedDomains = [
+      'https://c-mail.vercel.app',
+      'https://*.vercel.app'
+    ];
+    
+    const isAllowed = allowedDomains.some(domain => {
+      if (domain.includes('*')) {
+        const regex = new RegExp(domain.replace('*', '.*'));
+        return regex.test(origin);
+      }
+      return origin === domain;
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json({ limit: '50mb' }));
