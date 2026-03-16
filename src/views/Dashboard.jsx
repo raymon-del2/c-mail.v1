@@ -1421,9 +1421,18 @@ export default function Dashboard() {
   const addRedirectUrl = async () => {
     const val = redirectUrlInput.trim();
     if (!val) return;
-    // Basic URL validation + must end with a path segment (contains /)
-    if (!val.startsWith('https://') || !val.includes('/', 9)) {
-      setToast('URL must start with https:// and include a path (e.g. /callback/abc123)');
+    // Relaxed URL validation - allows http://localhost for development and simple paths
+    const isLocalhost = val.startsWith('http://localhost') || val.startsWith('http://127.0.0.1');
+    const isHttps = val.startsWith('https://');
+    const hasPath = val.includes('/', 9); // Must have at least one path segment after domain
+    
+    if (!isLocalhost && !isHttps) {
+      setToast('URL must start with https:// or http://localhost for development');
+      setTimeout(() => setToast(null), 4000);
+      return;
+    }
+    if (!hasPath) {
+      setToast('URL must include a path (e.g. /callback)');
       setTimeout(() => setToast(null), 4000);
       return;
     }
