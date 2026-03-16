@@ -816,43 +816,62 @@ app.post('/api/v1/verify', async (req, res) => {
   try {
     const { code, clientId } = req.body;
     
+    console.log('🔍 /api/v1/verify called:', { code: code?.slice(0, 20) + '...', clientId: clientId?.slice(0, 20) + '...' });
+    
+    // Connect to database first
+    await connectDB();
+    
     // Verify code exists and is valid
     const codeData = authCodes.get(code);
     if (!codeData) {
+      console.log('❌ Code not found in authCodes map');
       return res.status(400).json({ error: 'Invalid or expired code' });
     }
     
+    console.log('✅ Code found:', { userId: codeData.userId, clientId: codeData.clientId });
+    
     if (codeData.used) {
+      console.log('❌ Code already used');
       return res.status(400).json({ error: 'Code already used' });
     }
     
     // Check expiration (5 minutes)
     if (Date.now() - codeData.createdAt > 5 * 60 * 1000) {
       authCodes.delete(code);
+      console.log('❌ Code expired');
       return res.status(400).json({ error: 'Code expired' });
     }
     
     // Verify client
     if (codeData.clientId !== clientId) {
+      console.log('❌ Client ID mismatch:', { expected: codeData.clientId, received: clientId });
       return res.status(400).json({ error: 'Client ID mismatch' });
     }
     
     // Get user data
+    console.log('🔍 Looking up user:', codeData.userId);
     const user = await User.findById(codeData.userId).select('-password');
     if (!user) {
+      console.log('❌ User not found');
       return res.status(404).json({ error: 'User not found' });
     }
+    
+    console.log('✅ User found:', { email: user.email, username: user.username });
     
     // Mark code as used
     codeData.used = true;
     
     // Generate refresh token (long-lived, for getting new access tokens)
     const refreshTokenString = 'cmail_refresh_' + crypto.randomBytes(32).toString('hex');
+    console.log('🔍 Creating refresh token...');
+    
     await RefreshToken.create({
       userId: user._id,
       clientId: clientId,
       token: refreshTokenString
     });
+    
+    console.log('✅ Refresh token created');
     
     // Generate JWT payload (simplified - no actual JWT signing for now)
     const token = {
@@ -867,16 +886,21 @@ app.post('/api/v1/verify', async (req, res) => {
       exp: Math.floor(Date.now() / 1000) + 3600 // 1 hour
     };
     
+    const accessToken = 'cmail_token_' + crypto.randomBytes(16).toString('hex');
+    
+    console.log('✅ Token exchange successful');
+    
     res.json({
-      access_token: 'cmail_token_' + crypto.randomBytes(16).toString('hex'),
+      access_token: accessToken,
       refresh_token: refreshTokenString,
       token_type: 'Bearer',
       expires_in: 3600,
       id_token: token
     });
   } catch (error) {
-    console.error('Verify token error:', error);
-    res.status(500).json({ error: 'Failed to verify code' });
+    console.error('❌ Verify token error:', error);
+    console.error('Stack:', error.stack);
+    res.status(500).json({ error: 'Failed to verify code', details: error.message });
   }
 });
 
