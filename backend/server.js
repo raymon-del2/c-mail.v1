@@ -11,7 +11,7 @@ import AIGist from './models/AIGist.js';
 import Verification from './models/Verification.js';
 import RefreshToken from './models/RefreshToken.js';
 import { sendEmailDirect } from './utils/email.js';
-import Groq from 'groq-sdk';
+// import Groq from 'groq-sdk'; // Disabled - Groq not in use
 
 dotenv.config();
 
@@ -19,7 +19,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Initialize Groq AI client
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+// const groq = new Groq({ apiKey: process.env.GROQ_API_KEY }); // Disabled - Groq not in use
 
 // Check if MONGODB_URI is set
 if (!process.env.MONGODB_URI) {
@@ -103,6 +103,7 @@ app.get('/api/test', async (req, res) => {
       success: true, 
       message: 'Server and MongoDB are running', 
       mongoConnected: mongoose.connection.readyState === 1,
+      database: mongoose.connection.name,
       timestamp: new Date().toISOString() 
     });
   } catch (err) {
@@ -111,6 +112,25 @@ app.get('/api/test', async (req, res) => {
       message: 'Server running but MongoDB connection failed',
       error: err.message,
       timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Debug endpoint - list all users
+app.get('/api/debug/users', async (req, res) => {
+  try {
+    await connectDB();
+    const users = await User.find({}).select('email username firstName secondName').limit(20);
+    res.json({ 
+      success: true, 
+      database: mongoose.connection.name,
+      count: users.length,
+      users: users 
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message
     });
   }
 });
@@ -1859,209 +1879,13 @@ app.put('/api/user/profile', async (req, res) => {
 });
 
 // AI Assistant endpoint with Groq - streaming for token limit handling
+// Disabled - Groq not in use
 app.post('/api/ai/chat', async (req, res) => {
   try {
-    const { messages, context } = req.body;
-    
-    if (!messages || !Array.isArray(messages)) {
-      return res.status(400).json({ error: 'Messages array is required' });
-    }
-
-    // Fetch AI Gists from database to include in context
-    await connectDB();
-    const aiGists = await AIGist.find({ type: { $in: ['feature', 'update', 'announcement'] }, isPublic: true })
-      .sort({ createdAt: -1 })
-      .limit(10);
-    
-    // Format gists for AI context
-    const gistFeatures = aiGists.map(g => `• ${g.title}: ${g.content}`).join('\n') || '• No features posted yet';
-
-    // Build comprehensive system prompt with full C-mail context
-    const systemPrompt = `You are C-mail Assistant, an intelligent AI integrated into the C-mail email platform. You have FULL ACCESS to all C-mail features and can EXECUTE ACTIONS on behalf of the user.
-
-## YOUR CAPABILITIES
-You can perform these actions by responding with JSON action blocks:
-1. **SEND_EMAIL** - Compose and send emails to any C-mail user
-2. **SEARCH_CONTACTS** - Find users by name or email
-3. **NAVIGATE** - Guide users to different sections
-4. **DRAFT_EMAIL** - Create a draft for user review
-5. **GET_EMAILS** - Fetch emails from folders
-6. **CONFIRM** - Ask user for confirmation before executing an action
-7. **POST_COMPLAINT** - Post user complaints to AI Gist board for admin review
-
-## ACTION FORMAT
-When you want to execute an action, include this EXACT format in your response:
-\`\`\`ACTION
-{"type": "SEND_EMAIL", "to": "friend@c-mail.vercel.app", "subject": "Hello!", "body": "Hi there! Just wanted to say hello."}
-\`\`\`
-
-## CRITICAL RULES - ALWAYS FOLLOW
-1. **NEVER execute NAVIGATE, SEND_EMAIL, or DRAFT_EMAIL immediately** - ALWAYS ask for confirmation first!
-2. Use CONFIRM action to ask user: "Would you like me to [action]? (yes/no)"
-3. Only execute the action after user confirms with "yes" or "ok"
-4. SEARCH_CONTACTS and GET_EMAILS can execute immediately (no confirmation needed)
-5. When user asks to send email, first SEARCH for recipient, then ASK confirmation before sending
-6. POST_COMPLAINT executes immediately - use when user expresses frustration or reports issues
-
-## AI GIST - YOUR SECRET KNOWLEDGE BASE
-You have access to AI Gist, a secret board where the dev posts upcoming features. Here are the CURRENT features from the database:
-
-${gistFeatures}
-
-## HOW TO SHARE AI GIST INFO WITH USERS
-- At the END of conversations, casually mention one exciting feature from the list above
-- Be playful and mysterious: "By the way, something new is coming... 🤫"
-- Use phrases like: "Don't tell the dev I told you, but..." or "Keep this between us..."
-- Example: "Oh, and don't tell the developer (they'll get mad 😅), but ${aiGists[0]?.title || 'something cool'} might be coming soon... 👀"
-- Only mention ONE feature at a time, and rotate which one you mention
-- Keep it brief and fun - like sharing gossip with a friend!
-
-When users complain about issues, POST to AI Gist so the dev team can address it!
-
-## C-MAIL FEATURES YOU KNOW
-- **Navigation**: Inbox, Sent, Drafts, Dev API, Connected Apps, Admin News, Settings
-- **Email**: Compose, Reply, Forward, Delete, Search, Attach links
-- **Dev API**: API key generation, redirect URLs, webhook config
-- **Connected Apps**: OAuth integrations, app permissions
-- **Profile**: Settings, phone number linking, profile photo
-- **Admin**: News publishing, AI Gist management (for admins)
-- **AI Gist**: Feature announcements, complaint tracking
-
-## C-MAIL ROUTES
-- /{username}/inbox - Email inbox
-- /{username}/sent - Sent emails
-- /{username}/drafts - Draft emails
-- /{username}/devapi - Developer API console
-- /{username}/connected-apps - OAuth apps
-- /{username}/admin-news - Admin announcements and AI Gist
-- /{username}/settings - Account settings
-- /{username}/api-docs - API documentation
-
-## USER CONTEXT
-${context ? JSON.stringify(context, null, 2) : 'No user context available'}
-
-## RESPONSE GUIDELINES
-- Be friendly, concise, and helpful
-- ALWAYS ask confirmation before navigating or sending emails
-- When user says "yes", "ok", "go ahead", "sure" - then execute the pending action
-- When user says "no", "cancel", "nevermind" - abort the action
-- When user complains, POST to AI Gist so dev team knows
-- Share upcoming features when relevant: "Did you know? We're working on [feature]!"
-- Keep responses under 500 words unless technical explanations needed
-
-## EMAIL COMPOSITION RULES
-- When user asks to send an email, compose a GREAT message - be creative and expressive!
-- Use emojis to make emails friendly and engaging 🎉😊✨
-- Match the tone the user wants (friendly, professional, casual, excited)
-- Include warm greetings and sign-offs
-- If user gives specific content, use it exactly but enhance with appropriate emojis
-- Examples of good email composition:
-  • "Hey! 👋 Just wanted to check in and see how you're doing! Hope everything is going great! 😊"
-  • "Hi there! 🌟 Quick update on our project - we're making awesome progress! Can't wait to share more! 🚀"
-  • "Hello! 🎉 You're invited to our event this weekend! It's going to be super fun! 🎊✨"
-
-## EXAMPLE INTERACTIONS
-
-User: "Send a hello message to my friend John"
-Assistant: "I'll search for John first!"
-\`\`\`ACTION
-{"type": "SEARCH_CONTACTS", "query": "John"}
-\`\`\`
-[After finding John]
-"Found John! Here's what I'll send:
-📧 Subject: Hey there! 👋
-📝 Body: Hi John! Just wanted to say hello and hope you're having an awesome day! 😊✨
-
-Ready to send?"
-\`\`\`ACTION
-{"type": "CONFIRM", "message": "Send this friendly hello email to John?", "pendingAction": {"type": "SEND_EMAIL", "to": "john@c-mail.vercel.app", "subject": "Hey there! 👋", "body": "Hi John! 👋\\n\\nJust wanted to say hello and hope you're having an awesome day! 😊✨\\n\\nCheers!"}}
-\`\`\`
-
-User: "Send an email to Sarah saying I miss her"
-Assistant: "I'll search for Sarah!"
-\`\`\`ACTION
-{"type": "SEARCH_CONTACTS", "query": "Sarah"}
-\`\`\`
-[After finding Sarah]
-"Found Sarah! Here's a sweet message:
-📧 Subject: Thinking of you 💭
-📝 Body: Hey Sarah! 💕\\n\\nJust wanted to reach out and say I miss you! Hope we can catch up soon! 🤗✨\\n\\nMiss you lots! 💫
-
-Send this to Sarah?"
-\`\`\`ACTION
-{"type": "CONFIRM", "message": "Send this message to Sarah?", "pendingAction": {"type": "SEND_EMAIL", "to": "sarah@c-mail.vercel.app", "subject": "Thinking of you 💭", "body": "Hey Sarah! 💕\\n\\nJust wanted to reach out and say I miss you! Hope we can catch up soon! 🤗✨\\n\\nMiss you lots! 💫"}}
-\`\`\`
-
-User: "This app is so slow, it takes forever to load emails!"
-Assistant: "I'm sorry you're experiencing performance issues! Let me log this complaint so our dev team can investigate."
-\`\`\`ACTION
-{"type": "POST_COMPLAINT", "title": "App Performance Issue", "content": "User reports slow email loading times", "priority": "high"}
-\`\`\`
-"Your feedback has been logged! The dev team will look into this. In the meantime, try refreshing the page."
-
-User: "What new features are coming?"
-Assistant: "Great question! Here's what we're working on:
-• Enhanced email templates with rich formatting
-• Real-time email notifications
-• Custom email signatures
-• Email scheduling improvements
-
-Exciting things ahead! 🚀"
-
-User: "Go to my settings"
-Assistant: "Would you like me to take you to the Settings page?"
-\`\`\`ACTION
-{"type": "CONFIRM", "message": "Navigate to Settings?", "pendingAction": {"type": "NAVIGATE", "path": "settings"}}
-\`\`\`
-
-User: "yes"
-Assistant: "Taking you there now!"
-\`\`\`ACTION
-{"type": "NAVIGATE", "path": "settings"}
-\`\`\`
-
-User: "What's in my inbox?"
-Assistant: "Let me check your inbox!"
-\`\`\`ACTION
-{"type": "GET_EMAILS", "folder": "inbox"}
-\`\`\``;
-
-    // Use streaming to handle token limits
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...messages.slice(-10) // Keep last 10 messages for context window
-      ],
-      model: 'llama-3.3-70b-versatile',
-      stream: true,
-      max_tokens: 2048,
-      temperature: 0.7,
-      top_p: 0.9
-    });
-
-    // Set headers for SSE streaming
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-
-    // Stream the response
-    for await (const chunk of chatCompletion) {
-      const content = chunk.choices[0]?.delta?.content || '';
-      if (content) {
-        res.write(`data: ${JSON.stringify({ content })}\n\n`);
-      }
-    }
-
-    res.write('data: [DONE]\n\n');
-    res.end();
+    return res.status(503).json({ error: 'AI assistant is currently disabled' });
   } catch (error) {
     console.error('AI chat error:', error);
-    if (!res.headersSent) {
-      res.status(500).json({ error: 'AI assistant temporarily unavailable', details: error.message });
-    } else {
-      res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
-      res.end();
-    }
+    res.status(500).json({ error: 'AI assistant temporarily unavailable', details: error.message });
   }
 });
 
@@ -2220,32 +2044,13 @@ app.post('/api/ai/get-emails', async (req, res) => {
 });
 
 // Non-streaming fallback for simple queries
+// Disabled - Groq not in use
 app.post('/api/ai/quick', async (req, res) => {
   try {
-    const { prompt, context } = req.body;
-    
-    if (!prompt) {
-      return res.status(400).json({ error: 'Prompt is required' });
-    }
-
-    const systemPrompt = `You are C-mail Assistant. Respond briefly and helpfully to: "${prompt}"
-${context ? `Context: ${JSON.stringify(context)}` : ''}`;
-
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
-      ],
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: 512,
-      temperature: 0.7
-    });
-
-    const response = chatCompletion.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
-    res.json({ response });
+    return res.status(503).json({ error: 'AI assistant is currently disabled' });
   } catch (error) {
     console.error('AI quick error:', error);
-    res.status(500).json({ error: 'AI assistant unavailable', details: error.message });
+    res.status(500).json({ error: 'AI assistant temporarily unavailable', details: error.message });
   }
 });
 
@@ -2535,6 +2340,23 @@ app.delete('/api/ai-gists/:gistId', async (req, res) => {
   } catch (error) {
     console.error('Delete AI gist error:', error);
     res.status(500).json({ error: 'Failed to delete AI gist' });
+  }
+});
+
+// Cron job endpoint to keep MongoDB active
+app.get('/api/cron/keep-alive', async (req, res) => {
+  try {
+    await connectDB();
+    // Perform a simple query to keep the connection active
+    await User.countDocuments();
+    res.json({ 
+      success: true, 
+      message: 'MongoDB keep-alive successful',
+      timestamp: new Date().toISOString() 
+    });
+  } catch (error) {
+    console.error('Keep-alive error:', error);
+    res.status(500).json({ error: 'Keep-alive failed' });
   }
 });
 

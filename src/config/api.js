@@ -18,7 +18,7 @@ const getApiUrl = () => {
   }
   
   // Default to localhost for development
-  return 'http://localhost:5000';
+  return 'http://localhost:5003';
 };
 
 export const API_URL = getApiUrl();
