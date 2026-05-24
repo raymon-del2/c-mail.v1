@@ -2346,6 +2346,14 @@ app.delete('/api/ai-gists/:gistId', async (req, res) => {
 // Cron job endpoint to keep MongoDB active
 app.get('/api/cron/keep-alive', async (req, res) => {
   try {
+    // Verify CRON_SECRET for security
+    const authHeader = req.headers.get('authorization');
+    const cronSecret = process.env.CRON_SECRET;
+
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+      return res.status(401).end('Unauthorized');
+    }
+
     await connectDB();
     // Perform a simple query to keep the connection active
     await User.countDocuments();
